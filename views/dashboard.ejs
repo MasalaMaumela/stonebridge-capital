@@ -1,0 +1,30 @@
+<% layout('layout') %>
+<section class="dashboard">
+  <h2>
+    <img src="/images/stonebridge-logo.png" height="30" alt="Logo"> 
+    Welcome, <%= user.username %>
+  </h2>
+
+  <div class="card">
+    <h3>Your Balance</h3>
+    <p>$<%= user.balance.toFixed(2) %></p>
+  </div>
+
+  <div class="card">
+    <h3>Your Deposits</h3>
+    <table>
+      <tr>
+        <th>Amount</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+      <% deposits.forEach(dep => { %>
+        <tr>
+          <td>$<%= dep.amount %></td>
+          <td><%= dep.date %></td>
+          <td><%= dep.status %></td>
+        </tr>
+      <% }) %>
+    </table>
+  </div>
+</section>

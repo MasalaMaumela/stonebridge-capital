@@ -1,0 +1,18 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "stonebridge-managemasala-aa59.j.aivencloud.com",
+            "port": 27068,
+            "driver": "MySQL",
+            "name": "stonebridge",
+            "database": "stonebridge",
+            "username": "avnadmin"
+        }
+    ]
+}

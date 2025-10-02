@@ -1,0 +1,74 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #f5f7fa;
+  color: #333;
+}
+header {
+  background: #003366;
+  color: white;
+  padding: 10px;
+}
+header h1 {
+  margin: 0;
+}
+nav a {
+  color: white;
+  margin-right: 15px;
+  text-decoration: none;
+}
+main {
+  padding: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+th, td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+button {
+  background: #003366;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  background: #0055aa;
+}
+/* ========================
+   Stonebridge Capital Theme
+   ======================== */
+
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #1b1f2a;
+  padding: 10px 20px;
+  color: white;
+}
+
+header img {
+  border-radius: 12px;
+}
+
+header h1 {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+main {
+  padding: 20px;
+}

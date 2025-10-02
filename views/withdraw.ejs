@@ -1,0 +1,19 @@
+<% layout('layout') %>
+<section class="withdraw">
+  <h2>
+    <img src="/images/stonebridge-logo.png" height="30" alt="Logo"> 
+    Request Withdrawal
+  </h2>
+
+  <form action="/withdraw" method="POST">
+    <label>Amount (USD):</label>
+    <input type="number" name="amount" min="10" step="1" required>
+
+    <label>Your TRC20 Wallet Address:</label>
+    <input type="text" name="wallet" required>
+
+    <p class="warning">⚠️ You cannot withdraw more than your balance. Admin will process payouts manually.</p>
+
+    <button type="submit">Submit Withdrawal</button>
+  </form>
+</section>

@@ -1,0 +1,19 @@
+<% layout('layout') %>
+<section class="deposit">
+  <h2>
+    <img src="/images/stonebridge-logo.png" height="30" alt="Logo"> 
+    Make a Deposit
+  </h2>
+
+  <form action="/deposit" method="POST">
+    <label>Amount (USD):</label>
+    <input type="number" name="amount" min="15" step="1" required>
+
+    <label>Your TRC20 Wallet Address:</label>
+    <input type="text" name="wallet" required>
+
+    <p class="warning">⚠️ Please ensure your wallet address is correct. Admin will manually verify deposits.</p>
+
+    <button type="submit">Submit Deposit</button>
+  </form>
+</section>

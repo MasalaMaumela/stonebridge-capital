@@ -1,19 +1,21 @@
+// server.js
 require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
 const bodyParser = require("body-parser");
-const pool = require("./database"); // MySQL pool
+const pool = require("./database"); // MySQL pool (with SSL)
 const bcrypt = require("bcrypt");
 const expressLayouts = require("express-ejs-layouts");
 const crypto = require("crypto");
 const MySQLStore = require("express-mysql-session")(session);
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // --- EJS setup ---
 app.set("view engine", "ejs");
-app.set("views", __dirname + "/views"); // make sure this folder exists
+app.set("views", __dirname + "/views");
 app.use(expressLayouts);
 app.use(express.static("public"));
 
@@ -21,23 +23,27 @@ app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// --- MySQL Session Store ---
-const options = {
+// --- MySQL Session Store with SSL ---
+let sessionStoreOptions = {
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  password: process.env.DB_PASS,
   database: process.env.DB_NAME,
 };
-const sessionStore = new MySQLStore(options);
+if (process.env.DB_SSL_CA && fs.existsSync(process.env.DB_SSL_CA)) {
+  sessionStoreOptions.ssl = { ca: fs.readFileSync(process.env.DB_SSL_CA) };
+}
+const sessionStore = new MySQLStore(sessionStoreOptions);
 
 app.use(
   session({
-    key: "sb_sid", // cookie name
+    key: "sb_sid",
     secret: process.env.SESSION_SECRET || "secretkey",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 1 day
+    cookie: { maxAge: 1000 * 60 * 60 * 24 },
   })
 );
 
@@ -80,7 +86,9 @@ function getLevelAndBonus(smallestSideAmount) {
 app.get("/", (req, res) => res.redirect("/login"));
 
 // Login / Register Pages
-app.get("/login", (req, res) => res.render("login", { error: null, message: null, user: req.session.user }));
+app.get("/login", (req, res) =>
+  res.render("login", { error: null, message: null, user: req.session.user })
+);
 app.get("/register", (req, res) =>
   res.render("register", { error: null, message: null, referral: req.query.ref || "", user: req.session.user })
 );
@@ -152,7 +160,7 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    if (email === "stonebridge499@gmail.com" && password === "Agrippine2017") {
+    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
       req.session.user = { id: 0, email, username: "Admin", isAdmin: true, balance: 0 };
       return res.redirect("/admin");
     }
@@ -194,7 +202,7 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
 
     let user = userRows[0];
     user.balance = Number(user.balance || 0);
-    user.referral_link = `${process.env.BASE_URL}/register?ref=${user.referral_code}`;
+    user.referral_link = `${process.env.APP_URL}/register?ref=${user.referral_code}`;
 
     const [deposits] = await pool.query(
       `SELECT d.id, d.amount, d.wallet, d.txid, d.status, p.name AS plan_name, p.daily_return, p.weekly_return, p.monthly_return

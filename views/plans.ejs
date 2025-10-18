@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Choose a Plan</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Choose Your Investment Plan</h1>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/logout">Logout</a>
+    </nav>
+  </header>
+
+  <div class="container">
+    <h2>Select a Plan to Start</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Minimum</th>
+          <th>Daily</th>
+          <th>Weekly</th>
+          <th>Monthly</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% plans.forEach(plan => { %>
+          <tr>
+            <td><%= plan.name %></td>
+            <td>$<%= plan.min_amount %></td>
+            <td>$<%= plan.daily_return %></td>
+            <td>$<%= plan.weekly_return %></td>
+            <td>$<%= plan.monthly_return %></td>
+            <td>
+              <a href="/choose-plan/<%= plan.id %>" class="button">Select</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    <p>© 2025 Stonebridge Capital</p>
+  </footer>
+</body>
+</html>

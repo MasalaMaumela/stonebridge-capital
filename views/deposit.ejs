@@ -1,19 +1,323 @@
-<% layout('layout') %>
-<section class="deposit">
-  <h2>
-    <img src="/images/stonebridge-logo.png" height="30" alt="Logo"> 
-    Make a Deposit
-  </h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deposit Funds</title>
 
-  <form action="/deposit" method="POST">
-    <label>Amount (USD):</label>
-    <input type="number" name="amount" min="15" step="1" required>
+<style>
+/* === RESET === */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-    <label>Your TRC20 Wallet Address:</label>
-    <input type="text" name="wallet" required>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #1a73e8, #4facfe);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #333;
+}
 
-    <p class="warning">⚠️ Please ensure your wallet address is correct. Admin will manually verify deposits.</p>
+/* === HEADER / NAVBAR === */
+header {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+}
 
-    <button type="submit">Submit Deposit</button>
-  </form>
-</section>
+header .logo {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+nav a {
+  margin-left: 25px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.25s;
+}
+
+nav a:hover {
+  color: #ffd700;
+}
+
+/* === MAIN CONTENT === */
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+}
+
+.card {
+  background: #fff;
+  padding: 30px 25px;
+  border-radius: 18px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+}
+
+.card h2 {
+  color: #1a73e8;
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+}
+
+.card p {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: #444;
+  text-align: left;
+}
+
+/* === FORM === */
+form {
+  margin-top: 20px;
+  text-align: left;
+}
+
+form label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-top: 15px;
+  font-size: 0.95rem;
+}
+
+form select,
+form input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+form select:focus,
+form input:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 6px rgba(26,115,232,0.3);
+  outline: none;
+}
+
+/* === BUTTON === */
+button {
+  width: 100%;
+  background: linear-gradient(to right, #1a73e8, #4facfe);
+  color: #fff;
+  font-weight: bold;
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  margin-top: 25px;
+  font-size: 1rem;
+  transition: all 0.25s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(26,115,232,0.4);
+}
+
+/* === PROFIT BOX === */
+.profit-box {
+  display: none;
+  background: #eafaf1;
+  color: #27ae60;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 15px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+/* === FOOTER === */
+footer {
+  width: 100%;
+  text-align: center;
+  padding: 15px 0;
+  color: #fff;
+  font-size: 0.9rem;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+}
+
+/* === MOBILE === */
+@media (max-width: 600px) {
+  header {
+    flex-direction: column;
+    text-align: center;
+  }
+  nav {
+    margin-top: 8px;
+  }
+  nav a {
+    margin: 0 10px;
+    font-size: 0.95rem;
+  }
+  main {
+    padding: 25px 10px;
+  }
+  .card {
+    padding: 25px 20px;
+  }
+}
+</style>
+</head>
+
+<body>
+  <header>
+    <div class="logo">Stonebridge Capital</div>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/deposit">Deposit</a>
+      <a href="/withdraw">Withdraw</a>
+      <a href="/logout">Logout</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Deposit Funds</h2>
+
+      <p>Please send your TRC20 deposit to the following address:</p>
+      <p><strong>TH6KhjSWDmP5hgHFrVb59UcAD5qgB6cg6S</strong></p>
+
+      <p>
+        After sending, copy the <strong>Transaction ID (TXID)</strong> from
+        your wallet or exchange and paste it below.
+      </p>
+
+      <form action="/deposit" method="POST">
+        <!-- PLAN SELECTION -->
+        <label for="plan">Select Plan</label>
+        <select name="plan_id" id="plan" required>
+          <option value="">-- Choose a plan --</option>
+          <% plans.forEach(plan => { %>
+            <option
+              value="<%= plan.id %>"
+              data-daily="<%= plan.daily_return %>"
+              data-weekly="<%= plan.weekly_return %>"
+              data-monthly="<%= plan.monthly_return %>"
+              data-min="<%= plan.min_amount_usd %>">
+              <%= plan.name %> — Min $<%= plan.min_amount_usd %>
+              (Daily $<%= plan.daily_return %>, Weekly $<%= plan.weekly_return %>, Monthly $<%= plan.monthly_return %>)
+            </option>
+          <% }) %>
+        </select>
+
+        <!-- AMOUNT -->
+        <label for="amount">Amount</label>
+        <input
+          type="number"
+          name="amount"
+          id="amount"
+          required
+          step="0.01"
+          placeholder="Enter amount"
+        />
+
+        <!-- LIVE PROFIT DISPLAY -->
+        <div id="profit-display" class="profit-box"></div>
+
+        <!-- WALLET -->
+        <label for="wallet">Your Wallet Address</label>
+        <input
+          type="text"
+          name="wallet"
+          id="wallet"
+          required
+          placeholder="Enter your wallet address"
+        />
+
+        <!-- TXID -->
+        <label for="txid">Transaction ID (TXID)</label>
+        <input
+          type="text"
+          name="txid"
+          id="txid"
+          required
+          placeholder="Paste your transaction ID here"
+        />
+
+        <button type="submit">Submit Deposit</button>
+      </form>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 Stonebridge Capital. All rights reserved.
+  </footer>
+
+  <script>
+    const planSelect = document.getElementById("plan");
+    const amountInput = document.getElementById("amount");
+    const profitDisplay = document.getElementById("profit-display");
+
+    function updateProfit() {
+      const selected = planSelect.options[planSelect.selectedIndex];
+      if (!selected || !amountInput.value) {
+        profitDisplay.style.display = "none";
+        return;
+      }
+
+      const min = parseFloat(selected.dataset.min || 0);
+      const daily = parseFloat(selected.dataset.daily || 0);
+      const weekly = parseFloat(selected.dataset.weekly || 0);
+      const monthly = parseFloat(selected.dataset.monthly || 0);
+      const amount = parseFloat(amountInput.value);
+
+      if (amount < min) {
+        profitDisplay.innerHTML = `❌ Minimum deposit for ${selected.text} is $${min}`;
+        profitDisplay.style.display = "block";
+        profitDisplay.style.color = "#e74c3c";
+        return;
+      }
+
+      profitDisplay.style.display = "block";
+      profitDisplay.style.color = "#27ae60";
+      profitDisplay.innerHTML = `
+        ✅ Estimated Returns:<br>
+        • Daily: $${daily.toFixed(2)}<br>
+        • Weekly: $${weekly.toFixed(2)}<br>
+        • Monthly: $${monthly.toFixed(2)}
+      `;
+    }
+
+    planSelect.addEventListener("change", () => {
+      const selected = planSelect.options[planSelect.selectedIndex];
+      if (selected && selected.dataset.min) {
+        amountInput.value = selected.dataset.min;
+      }
+      updateProfit();
+    });
+
+    amountInput.addEventListener("input", updateProfit);
+  </script>
+</body>
+</html>

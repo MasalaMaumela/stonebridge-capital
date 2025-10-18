@@ -1,67 +1,320 @@
-<% layout('layout') %>
-<section class="admin">
-  <h2>
-    <img src="/images/stonebridge-logo.png" height="30" alt="Logo"> 
-    Admin Panel
-  </h2>
 
-  <h3>All Users</h3>
-  <table>
-    <tr>
-      <th>Username</th>
-      <th>Email</th>
-      <th>Balance</th>
-    </tr>
-    <% users.forEach(u => { %>
-      <tr>
-        <td><%= u.username %></td>
-        <td><%= u.email %></td>
-        <td>$<%= u.balance.toFixed(2) %></td>
-      </tr>
-    <% }) %>
-  </table>
+<header>
+  <div class="logo-container">
+    <img src="/images/background.jpg" alt="Logo">
+    <h1>Stonebridge Capital</h1>
+  </div>
+  <nav>
+    <!-- your nav links -->
+  </nav>
+</header>
 
-  <h3>Pending Deposits</h3>
-  <table>
-    <tr>
-      <th>User</th>
-      <th>Amount</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-    <% deposits.forEach(dep => { %>
-      <tr>
-        <td><%= dep.username %></td>
-        <td>$<%= dep.amount %></td>
-        <td><%= dep.status %></td>
-        <td>
-          <a href="/admin/approveDeposit/<%= dep.id %>">✅ Approve</a>
-          <a href="/admin/rejectDeposit/<%= dep.id %>">❌ Reject</a>
-        </td>
-      </tr>
-    <% }) %>
-  </table>
 
-  <h3>Pending Withdrawals</h3>
-  <table>
-    <tr>
-      <th>User</th>
-      <th>Amount</th>
-      <th>Wallet</th>
-      <th>Status</th>
-      <th>Action</th>
-    </tr>
-    <% withdrawals.forEach(w => { %>
-      <tr>
-        <td><%= w.username %></td>
-        <td>$<%= w.amount %></td>
-        <td><%= w.wallet %></td>
-        <td><%= w.status %></td>
-        <td>
-          <a href="/admin/approveWithdrawal/<%= w.id %>">✅ Approve</a>
-          <a href="/admin/rejectWithdrawal/<%= w.id %>">❌ Reject</a>
-        </td>
-      </tr>
-    <% }) %>
-  </table>
-</section>
+<div class="dashboard-card">
+  <h2>Admin Dashboard</h2>
+
+  <!-- SUCCESS / ERROR ALERTS -->
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="alert success"><%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert error"><%= error %></div>
+  <% } %>
+
+  <!-- KPI Cards -->
+  <div class="kpi-cards">
+    <div class="kpi-card users-card">
+      <h4>Total Users</h4>
+      <p><%= users.length || 0 %></p>
+    </div>
+    <div class="kpi-card deposits-card">
+      <h4>Total Deposits ($)</h4>
+      <p>$<%= deposits.reduce((sum, d) => sum + parseFloat(d.amount || 0), 0).toFixed(2) %></p>
+    </div>
+    <div class="kpi-card withdrawals-card">
+      <h4>Total Withdrawals ($)</h4>
+      <p>$<%= withdrawals.reduce((sum, w) => sum + parseFloat(w.amount || 0), 0).toFixed(2) %></p>
+    </div>
+    <div class="kpi-card referrals-card">
+      <h4>Total Referral Bonus ($)</h4>
+      <p>$<%= referrals.reduce((sum, r) => sum + parseFloat(r.bonus_earned || 0), 0).toFixed(2) %></p>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="dashboard-subcard users">
+    <h3>👥 All Users</h3>
+    <% const safeUsers = users || []; %>
+    <% if (safeUsers.length === 0) { %>
+      <p>No users found.</p>
+    <% } else { %>
+      <div class="table-wrapper">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Wallet</th>
+              <th>Balance ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% safeUsers.forEach(u => { %>
+              <tr>
+                <td><%= u.id %></td>
+                <td><%= u.name || "N/A" %></td>
+                <td><%= u.email %></td>
+                <td><%= u.wallet_address || "Not set" %></td>
+                <td>$<%= parseFloat(u.balance || 0).toFixed(2) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Deposits Table -->
+  <div class="dashboard-subcard deposits">
+    <h3>💰 All Deposits</h3>
+    <% const safeDeposits = deposits || []; %>
+    <% if (safeDeposits.length === 0) { %>
+      <p>No deposits found.</p>
+    <% } else { %>
+      <div class="table-wrapper">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Email</th>
+              <th>Plan</th>
+              <th>Amount ($)</th>
+              <th>Daily Gain ($)</th>
+              <th>Weekly Gain ($)</th>
+              <th>Monthly Gain ($)</th>
+              <th>Txid</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% safeDeposits.forEach(d => { %>
+              <tr>
+                <td><%= d.id %></td>
+                <td><%= d.user_name || "N/A" %></td>
+                <td><%= d.user_email || "N/A" %></td>
+                <td><%= d.plan_name || "N/A" %></td>
+                <td>$<%= parseFloat(d.amount || 0).toFixed(2) %></td>
+                <td>$<%= parseFloat(d.daily_gain || 0).toFixed(2) %></td>
+                <td>$<%= parseFloat(d.weekly_gain || 0).toFixed(2) %></td>
+                <td>$<%= parseFloat(d.monthly_gain || 0).toFixed(2) %></td>
+                <td><%= d.txid || "N/A" %></td>
+                <td><%= d.status %></td>
+                <td>
+                  <% if(d.status === "Pending") { %>
+                    <form method="POST" action="/admin/approve-deposit" style="display:inline;">
+                      <input type="hidden" name="depositId" value="<%= d.id %>">
+                      <button type="submit" class="action-btn approve">Approve</button>
+                    </form>
+                    <form method="POST" action="/admin/reject-deposit" style="display:inline;">
+                      <input type="hidden" name="depositId" value="<%= d.id %>">
+                      <button type="submit" class="action-btn reject">Reject</button>
+                    </form>
+                  <% } else { %>
+                    <span style="color: gray;"><%= d.status %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Withdrawals Table -->
+  <div class="dashboard-subcard withdrawals">
+    <h3>💸 All Withdrawals</h3>
+    <% const safeWithdrawals = withdrawals || []; %>
+    <% if (safeWithdrawals.length === 0) { %>
+      <p>No withdrawals found.</p>
+    <% } else { %>
+      <div class="table-wrapper">
+        <table class="dashboard-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Email</th>
+              <th>Amount ($)</th>
+              <th>Wallet</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% safeWithdrawals.forEach(w => { %>
+              <tr>
+                <td><%= w.id %></td>
+                <td><%= w.user_name || "N/A" %></td>
+                <td><%= w.user_email || "N/A" %></td>
+                <td>$<%= parseFloat(w.amount || 0).toFixed(2) %></td>
+                <td><%= w.wallet || "N/A" %></td>
+                <td><%= w.status %></td>
+                <td>
+                  <% if(w.status === "Pending") { %>
+                    <form method="POST" action="/admin/approve-withdrawal" style="display:inline;">
+                      <input type="hidden" name="withdrawalId" value="<%= w.id %>">
+                      <button type="submit" class="action-btn approve">Approve</button>
+                    </form>
+                    <form method="POST" action="/admin/reject-withdrawal" style="display:inline;">
+                      <input type="hidden" name="withdrawalId" value="<%= w.id %>">
+                      <button type="submit" class="action-btn reject">Reject</button>
+                    </form>
+                  <% } else { %>
+                    <span style="color: gray;"><%= w.status %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<style>
+.alert {
+  padding: 12px 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
+.alert.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+.alert.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.action-btn {
+  border: none;
+  padding: 6px 12px;
+  margin: 0 2px;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.action-btn.approve {
+  background: linear-gradient(120deg, #27ae60, #2ecc71);
+}
+.action-btn.reject {
+  background: linear-gradient(120deg, #e74c3c, #ff6b6b);
+}
+
+/* === your existing styles === */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #1a73e8, #4facfe);
+  background-image: url('/images/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.dashboard-card {
+  width: 95%;
+  max-width: 1500px;
+  margin: 30px auto;
+  padding: 30px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  font-family: 'Arial', sans-serif;
+}
+.dashboard-card h2 {
+  color: #2c3e50;
+  text-align: center;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 35px;
+  position: relative;
+}
+.dashboard-card h2::after {
+  content: "";
+  display: block;
+  width: 100px;
+  height: 5px;
+  background: linear-gradient(to right, #1a73e8, #4facfe);
+  margin: 12px auto 0;
+  border-radius: 3px;
+}
+
+.kpi-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+.kpi-card {
+  flex: 1 1 22%;
+  background: linear-gradient(135deg, #1a73e8, #4facfe);
+  color: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  text-align: center;
+  transition: transform 0.2s;
+}
+.kpi-card:hover { transform: translateY(-5px); }
+.kpi-card h4 { font-size: 1rem; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
+.kpi-card p { font-size: 1.8rem; font-weight: bold; }
+
+.dashboard-subcard {
+  background: #f9f9f9;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+  transition: transform 0.2s;
+}
+.dashboard-subcard:hover { transform: translateY(-3px); }
+
+.dashboard-subcard h3 {
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  padding: 8px 15px;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #1a73e8, #4facfe);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.table-wrapper { overflow-x: auto; }
+.dashboard-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.dashboard-table th, .dashboard-table td { padding: 12px; text-align: center; border: 1px solid #ddd; }
+.dashboard-table th { background-color: #1a73e8; color: #fff; text-transform: uppercase; position: sticky; top: 0; }
+.dashboard-table tr:nth-child(even) { background-color: #f9f9f9; }
+.dashboard-table tr:hover { background-color: #eef4ff; }
+@media (max-width: 1200px) { .kpi-cards { flex-direction: column; } }
+</style>

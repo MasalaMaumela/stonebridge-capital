@@ -1,19 +1,35 @@
-const mysql = require("mysql2");
+// database.js
+const mysql = require("mysql2/promise");
+const fs = require("fs");
+require("dotenv").config();
 
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST || "stonebridge-managemasala-aa59.j.aivencloud.com",
-  user: process.env.DB_USER || "avnadmin",
-  password: process.env.DB_PASS || "AVNS_1ieieeBFNwPbG6BWXw9",
-  database: process.env.DB_NAME || "stonebridge",
-  port: 3306
+let sslConfig = undefined;
+if (process.env.DB_SSL_CA && fs.existsSync(process.env.DB_SSL_CA)) {
+  sslConfig = { ca: fs.readFileSync(process.env.DB_SSL_CA) };
+}
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  ssl: sslConfig,
 });
 
-connection.connect(err => {
-  if (err) {
-    console.error("❌ Database connection failed:", err);
-  } else {
-    console.log("✅ Connected to Aiven MySQL!");
+async function testConnection() {
+  try {
+    const conn = await pool.getConnection();
+    console.log("✅ Connected to DB");
+    conn.release();
+  } catch (err) {
+    console.error("❌ DB connection failed:", err.message);
   }
-});
+}
 
-module.exports = connection;
+testConnection();
+
+module.exports = pool;

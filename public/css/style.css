@@ -1,0 +1,271 @@
+/* === GLOBAL STYLES === */ 
+body { 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+  margin: 0; 
+  padding: 0; 
+  background-color: #f5f7fa; 
+  color: #333; 
+} 
+
+a { 
+  text-decoration: none; 
+  color: #1a73e8; 
+  transition: color 0.3s ease; 
+} 
+
+a:hover { 
+  color: #155db2; 
+} 
+
+/* === HEADER / NAVIGATION === */ .logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-container img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+header { 
+  background: linear-gradient(to right, #1a73e8, #4facfe); 
+  color: #fff; 
+  padding: 15px 25px; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  position: sticky; 
+  top: 0; 
+  z-index: 10; 
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+} 
+
+#profit-display { 
+  background: rgba(0, 184, 148, 0.1); 
+  padding: 10px; 
+  border-radius: 10px; 
+  text-align: center; 
+  font-size: 15px; 
+  transition: all 0.3s ease; 
+  margin-top: 8px; 
+} 
+
+header h1 { 
+  margin: 0; 
+  font-size: 22px; 
+} 
+
+nav { 
+  display: flex; 
+  gap: 15px; 
+} 
+
+nav a { 
+  color: #fff; 
+  font-weight: 600; 
+  transition: all 0.3s; 
+} 
+
+nav a:hover { 
+  color: #e0e0e0; 
+} 
+
+/* === MOBILE MENU === */ 
+.menu-toggle { 
+  display: none; 
+  background: none; 
+  border: none; 
+  font-size: 26px; 
+  color: #fff; 
+  cursor: pointer; 
+} 
+
+@media (max-width: 768px) { 
+  .menu-toggle { 
+    display: block; 
+  } 
+
+  nav { 
+    display: none; 
+    flex-direction: column; 
+    background: #1a73e8; 
+    position: absolute; 
+    top: 60px; 
+    right: 20px; 
+    border-radius: 10px; 
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2); 
+    padding: 15px; 
+  } 
+
+  nav.open { 
+    display: flex; 
+  } 
+
+  nav a { 
+    margin: 8px 0; 
+  } 
+} 
+
+/* === MAIN CONTAINER === */ 
+.container { 
+  max-width: 1000px; 
+  margin: 40px auto; 
+  padding: 30px; 
+  background: #fff; 
+  border-radius: 12px; 
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1); 
+} 
+
+/* === DASHBOARD TABLE === */ 
+table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 20px; 
+  border-radius: 8px; 
+  overflow: hidden; 
+} 
+
+table th, 
+table td { 
+  padding: 14px 12px; 
+  border: 1px solid #ddd; 
+  text-align: left; 
+} 
+
+table th { 
+  background: #1a73e8; 
+  color: #fff; 
+  text-transform: uppercase; 
+  font-size: 14px; 
+} 
+
+table tr:nth-child(even) { 
+  background: #f9f9f9; 
+} 
+
+table tr:hover { 
+  background: #eef4ff; 
+} 
+
+/* === BUTTONS === */ 
+button, 
+a.button { 
+  display: inline-block; 
+  padding: 12px 20px; 
+  border: none; 
+  border-radius: 8px; 
+  background: linear-gradient(to right, #1a73e8, #4facfe); 
+  color: #fff; 
+  font-weight: bold; 
+  cursor: pointer; 
+  transition: all 0.3s ease; 
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+  text-align: center; 
+} 
+
+button:hover, 
+a.button:hover { 
+  background: linear-gradient(to right, #155db2, #3579ff); 
+  transform: translateY(-2px); 
+} 
+
+/* Make Deposit / Withdraw Links Styled Like Buttons */ 
+.actions { 
+  margin-top: 20px; 
+} 
+
+.actions a { 
+  margin-right: 15px; 
+} 
+
+.actions a { 
+  text-decoration: none; 
+  padding: 10px 18px; 
+  border-radius: 8px; 
+  background: linear-gradient(to right, #1a73e8, #4facfe); 
+  color: #fff; 
+  font-weight: bold; 
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+  transition: all 0.3s ease; 
+} 
+
+.actions a:hover { 
+  background: linear-gradient(to right, #155db2, #3579ff); 
+  transform: scale(1.05); 
+} 
+
+/* === FORMS === */ 
+form label { 
+  display: block; 
+  margin: 10px 0 5px; 
+  font-weight: bold; 
+  color: #444; 
+} 
+
+form input { 
+  width: 100%; 
+  padding: 12px; 
+  margin-bottom: 15px; 
+  border-radius: 8px; 
+  border: 1px solid #ccc; 
+  font-size: 16px; 
+  transition: border-color 0.3s ease; 
+} 
+
+form input:focus { 
+  border-color: #1a73e8; 
+  outline: none; 
+} 
+
+/* === PAGE STYLES === */ 
+.auth-page, 
+.form-page, 
+.dashboard-page { 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  min-height: 80vh; 
+  background: linear-gradient(to bottom right, #e3f2fd, #ffffff); 
+} 
+
+.card { 
+  background: #fff; 
+  padding: 40px 30px; 
+  border-radius: 12px; 
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1); 
+  width: 100%; 
+  max-width: 400px; 
+  text-align: center; 
+} 
+
+.card h2 { 
+  font-size: 28px; 
+  margin-bottom: 20px; 
+  color: #1a73e8; 
+} 
+
+/* === MESSAGES === */ 
+.error { 
+  color: #dc3545; 
+  margin-bottom: 10px; 
+} 
+
+.message { 
+  color: #28a745; 
+  margin-bottom: 10px; 
+} 
+
+/* === FOOTER === */ 
+footer { 
+  text-align: center; 
+  padding: 20px 0; 
+  background: #f1f1f1; 
+  color: #555; 
+  border-top: 1px solid #ddd; 
+  margin-top: 30px; 
+  font-size: 14px; 
+} 

@@ -1,28 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stonebridge Capital</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
+
+  <!-- Header -->
   <header>
-    <img src="/images/stonebridge-logo.png" alt="Stonebridge Capital Logo" height="60">
     <h1>Stonebridge Capital</h1>
-    <nav>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/deposit">Deposit</a>
-      <a href="/withdraw">Withdraw</a>
-      <a href="/chat">Chat</a>
-      <a href="/logout">Logout</a>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu">
+      ☰
+    </button>
+
+    <!-- Navigation Menu -->
+    <nav id="mainNav">
+      <% if (user && user.isAdmin) { %>
+        <a href="/admin" class="admin-link">Admin Panel</a>
+        <a href="/logout">Logout</a>
+      <% } else if (user) { %>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/deposit">Deposit</a>
+        <a href="/withdraw">Withdraw</a>
+        <a href="/logout">Logout</a>
+      <% } else { %>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+      <% } %>
     </nav>
   </header>
+
+  <!-- Main Content -->
   <main>
-    <%- body %>
+    <div class="container">
+      <%- body %>
+    </div>
   </main>
+
+  <!-- Footer -->
   <footer>
-    <p>&copy; <%= new Date().getFullYear() %> Stonebridge Capital. All Rights Reserved.</p>
+    <p>© 2025 Stonebridge Capital. All rights reserved.</p>
   </footer>
+
+  <!-- Mobile Menu Script -->
+  <script>
+    const toggle = document.getElementById('menuToggle');
+    const nav = document.getElementById('mainNav');
+
+    toggle.addEventListener('click', () => {
+      nav.classList.toggle('open');
+    });
+  </script>
 </body>
 </html>

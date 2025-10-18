@@ -6,7 +6,7 @@ const pool = require("./database"); // MySQL pool
 const bcrypt = require("bcrypt");
 const expressLayouts = require("express-ejs-layouts");
 const crypto = require("crypto");
-
+const MySQLStore = require('express-mysql-session')(session);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
@@ -26,7 +26,16 @@ app.use(
     saveUninitialized: false,
   })
 );
+const sessionStore = new MySQLStore(options);
 
+app.use(session({
+  key: 'sb_sid', // cookie name
+  secret: process.env.SECRET_KEY,
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 1000 * 60 * 60 * 24 } // 1 day
+}));
 // --- Auth Middleware ---
 function ensureAuth(req, res, next) {
   if (req.session.user) return next();

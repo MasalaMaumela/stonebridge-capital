@@ -7,14 +7,19 @@ const bcrypt = require("bcrypt");
 const expressLayouts = require("express-ejs-layouts");
 const crypto = require("crypto");
 const MySQLStore = require("express-mysql-session")(session);
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // --- EJS setup ---
 app.set("view engine", "ejs");
-app.set("views", __dirname + "/views");
-res.render("login");     // looks for views/login.ejs
-res.render("register");  // looks for views/register.ejs
+app.set("views", __dirname + "/views"); // make sure this folder exists
+app.use(expressLayouts);
+app.use(express.static("public"));
+
+// --- Middleware ---
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 
 // --- MySQL Session Store ---
 const options = {
@@ -23,7 +28,6 @@ const options = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 };
-
 const sessionStore = new MySQLStore(options);
 
 app.use(
@@ -102,7 +106,7 @@ app.post("/register", async (req, res) => {
 
     const newUserId = result.insertId;
 
-    // --- Handle 3-Level Referral System ---
+    // --- 3-Level Referral System ---
     if (referral) {
       const [[referrer]] = await pool.query("SELECT id FROM users WHERE referral_code = ?", [referral]);
       if (referrer) {
@@ -147,15 +151,12 @@ app.post("/register", async (req, res) => {
 // --- LOGIN POST ---
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
-
   try {
-    // Hardcoded admin
     if (email === "stonebridge499@gmail.com" && password === "Agrippine2017") {
       req.session.user = { id: 0, email, username: "Admin", isAdmin: true, balance: 0 };
       return res.redirect("/admin");
     }
 
-    // Normal users
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
     if (!rows.length)
       return res.render("login", { error: "Invalid credentials", message: null, user: req.session.user });

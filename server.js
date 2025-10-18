@@ -6,36 +6,33 @@ const pool = require("./database"); // MySQL pool
 const bcrypt = require("bcrypt");
 const expressLayouts = require("express-ejs-layouts");
 const crypto = require("crypto");
-const MySQLStore = require('express-mysql-session')(session);
+const MySQLStore = require("express-mysql-session")(session);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // --- EJS setup ---
-app.set("view engine", "ejs");
-app.set("views", __dirname + "/views");
-app.use(expressLayouts);
-app.use(express.static("public"));
 
-// --- Middleware ---
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "secretkey",
-    resave: false,
-    saveUninitialized: false,
-  })
-);
+// --- MySQL Session Store ---
+const options = {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+};
+
 const sessionStore = new MySQLStore(options);
 
-app.use(session({
-  key: 'sb_sid', // cookie name
-  secret: process.env.SECRET_KEY,
-  store: sessionStore,
-  resave: false,
-  saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 } // 1 day
-}));
+app.use(
+  session({
+    key: "sb_sid", // cookie name
+    secret: process.env.SESSION_SECRET || "secretkey",
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 1 day
+  })
+);
+
 // --- Auth Middleware ---
 function ensureAuth(req, res, next) {
   if (req.session.user) return next();
@@ -49,10 +46,10 @@ function ensureAdmin(req, res, next) {
 
 // --- Static Plans ---
 const plans = [
-  { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.30, weekly_return: 9.10, monthly_return: 36.41 },
-  { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.70, weekly_return: 12.13, monthly_return: 48.55 },
-  { id: 3, name: "Gold", min_amount_usd: 50, daily_return: 3.07, weekly_return: 21.50, monthly_return: 86.7 },
-  { id: 4, name: "Platinum", min_amount_usd: 100, daily_return: 5.61, weekly_return: 39.30, monthly_return: 157.21 },
+  { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3, weekly_return: 9.1, monthly_return: 36.41 },
+  { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7, weekly_return: 12.13, monthly_return: 48.55 },
+  { id: 3, name: "Gold", min_amount_usd: 50, daily_return: 3.07, weekly_return: 21.5, monthly_return: 86.7 },
+  { id: 4, name: "Platinum", min_amount_usd: 100, daily_return: 5.61, weekly_return: 39.3, monthly_return: 157.21 },
   { id: 5, name: "Diamond", min_amount_usd: 200, daily_return: 9.97, weekly_return: 69.83, monthly_return: 279.3 },
   { id: 6, name: "Ruby", min_amount_usd: 400, daily_return: 17.37, weekly_return: 121.6, monthly_return: 486.4 },
   { id: 7, name: "Emerald", min_amount_usd: 500, daily_return: 22.42, weekly_return: 157, monthly_return: 628 },

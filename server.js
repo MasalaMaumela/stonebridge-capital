@@ -11,6 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // --- EJS setup ---
+app.set("view engine", "ejs");
+app.set("views", __dirname + "/views");
+res.render("login");     // looks for views/login.ejs
+res.render("register");  // looks for views/register.ejs
 
 // --- MySQL Session Store ---
 const options = {

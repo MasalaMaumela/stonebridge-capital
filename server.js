@@ -9,6 +9,7 @@ const expressLayouts = require("express-ejs-layouts");
 const crypto = require("crypto");
 const MySQLStore = require("express-mysql-session")(session);
 const fs = require("fs");
+const cron = require("node-cron");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -52,7 +53,6 @@ function ensureAuth(req, res, next) {
   if (req.session.user) return next();
   res.redirect("/login");
 }
-
 function ensureAdmin(req, res, next) {
   if (req.session.user && req.session.user.isAdmin) return next();
   res.redirect("/login");
@@ -84,11 +84,7 @@ function getLevelAndBonus(smallestSideAmount) {
 
 // --- ROUTES ---
 app.get("/", (req, res) => res.redirect("/login"));
-
-// Login / Register Pages
-app.get("/login", (req, res) =>
-  res.render("login", { error: null, message: null, user: req.session.user })
-);
+app.get("/login", (req, res) => res.render("login", { error: null, message: null, user: req.session.user }));
 app.get("/register", (req, res) =>
   res.render("register", { error: null, message: null, referral: req.query.ref || "", user: req.session.user })
 );
@@ -194,6 +190,7 @@ app.post("/login", async (req, res) => {
 app.get("/dashboard", ensureAuth, async (req, res) => {
   try {
     const userId = req.session.user.id;
+
     const [userRows] = await pool.query(
       "SELECT id, name AS username, email, wallet_address AS wallet, balance, referral_code FROM users WHERE id = ?",
       [userId]
@@ -205,7 +202,8 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
     user.referral_link = `${process.env.APP_URL}/register?ref=${user.referral_code}`;
 
     const [deposits] = await pool.query(
-      `SELECT d.id, d.amount, d.wallet, d.txid, d.status, p.name AS plan_name, p.daily_return, p.weekly_return, p.monthly_return
+      `SELECT d.id, d.amount, d.wallet, d.txid, d.status, d.created_at, d.daily_gain, d.weekly_gain, d.monthly_gain,
+              p.name AS plan_name
        FROM deposits d
        LEFT JOIN plans p ON d.plan_id = p.id
        WHERE d.user_id = ?
@@ -215,13 +213,10 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
 
     const depositsWithGains = (deposits || []).map((dep) => ({
       ...dep,
-      daily_gain: Number(dep.daily_return || 0),
-      weekly_gain: Number(dep.weekly_return || 0),
-      monthly_gain: Number(dep.monthly_return || 0),
+      total_daily_gain: dep.daily_gain,
+      total_weekly_gain: dep.weekly_gain,
+      total_monthly_gain: dep.monthly_gain,
     }));
-
-    const totalMonthlyGain = depositsWithGains.reduce((sum, d) => sum + d.monthly_gain, 0);
-    user.balance += totalMonthlyGain;
 
     const [referrals] = await pool.query(
       `SELECT r.*, u.name AS referred_name, u.email AS referred_email
@@ -289,6 +284,36 @@ app.get("/admin", ensureAdmin, async (req, res) => {
   }
 });
 
+// --- ADMIN APPROVE / REJECT DEPOSITS ---
+app.post("/admin/deposit/:id/:action", ensureAdmin, async (req, res) => {
+  try {
+    const { id, action } = req.params;
+    if (!["approve", "reject"].includes(action)) return res.status(400).send("Invalid action");
+
+    const status = action === "approve" ? "Active" : "Rejected"; // <- UPDATED
+    await pool.query("UPDATE deposits SET status = ? WHERE id = ?", [status, id]);
+    res.redirect("/admin");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating deposit");
+  }
+});
+
+// --- ADMIN APPROVE / REJECT WITHDRAWALS ---
+app.post("/admin/withdraw/:id/:action", ensureAdmin, async (req, res) => {
+  try {
+    const { id, action } = req.params;
+    if (!["approve", "reject"].includes(action)) return res.status(400).send("Invalid action");
+
+    const status = action === "approve" ? "Approved" : "Rejected";
+    await pool.query("UPDATE withdrawals SET status = ? WHERE id = ?", [status, id]);
+    res.redirect("/admin");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating withdrawal");
+  }
+});
+
 // --- LOGOUT ---
 app.get("/logout", (req, res) => {
   req.session.destroy();
@@ -305,7 +330,7 @@ app.post("/deposit", ensureAuth, async (req, res) => {
       return res.render("deposit", { user: req.session.user, plans, error: "All fields required" });
 
     await pool.query(
-      "INSERT INTO deposits (user_id, plan_id, amount, wallet, txid, status) VALUES (?,?,?,?,?,?)",
+      "INSERT INTO deposits (user_id, plan_id, amount, wallet, txid, status, created_at) VALUES (?,?,?,?,?,?,NOW())",
       [userId, plan_id, amount, wallet, txid, "Pending"]
     );
     res.redirect("/dashboard");
@@ -323,7 +348,7 @@ app.post("/withdraw", ensureAuth, async (req, res) => {
     const userId = req.session.user.id;
     if (!amount || !wallet) return res.render("withdraw", { user: req.session.user, error: "All fields required" });
 
-    await pool.query("INSERT INTO withdrawals (user_id, amount, wallet, status) VALUES (?,?,?,?)", [
+    await pool.query("INSERT INTO withdrawals (user_id, amount, wallet, status, created_at) VALUES (?,?,?,?,NOW())", [
       userId,
       amount,
       wallet,
@@ -333,6 +358,41 @@ app.post("/withdraw", ensureAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.render("withdraw", { user: req.session.user, error: "Server error" });
+  }
+});
+
+// --- CRON: Daily Gains Update ---
+cron.schedule("0 0 * * *", async () => {
+  console.log("Running daily gains update...");
+
+  try {
+    const [deposits] = await pool.query(
+      `SELECT d.id, d.user_id, d.amount, d.status, d.daily_gain, d.weekly_gain, d.monthly_gain,
+              p.daily_return, p.weekly_return, p.monthly_return
+       FROM deposits d
+       LEFT JOIN plans p ON d.plan_id = p.id
+       WHERE d.status = 'Active'`
+    );
+
+    await Promise.all(
+      deposits.map(dep => {
+        const dailyGain = dep.amount * (dep.daily_return / 100);
+        const weeklyGain = dep.amount * (dep.weekly_return / 100);
+        const monthlyGain = dep.amount * (dep.monthly_return / 100);
+
+        return Promise.all([
+          pool.query(
+            "UPDATE deposits SET daily_gain=?, weekly_gain=?, monthly_gain=? WHERE id=?",
+            [dailyGain, weeklyGain, monthlyGain, dep.id]
+          ),
+          pool.query("UPDATE users SET balance = balance + ? WHERE id=?", [dailyGain, dep.user_id])
+        ]);
+      })
+    );
+
+    console.log(`Daily gains updated for ${deposits.length} deposits.`);
+  } catch (err) {
+    console.error("Daily gain update error:", err);
   }
 });
 

@@ -63,14 +63,14 @@ function ensureAdmin(req, res, next) {
 
 // ---------------------- Static Plans ----------------------
 const plans = [
-  { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3, weekly_return: 9.1, monthly_return: 36.41 },
-  { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7, weekly_return: 12.13, monthly_return: 48.55 },
-  { id: 3, name: "Gold", min_amount_usd: 50, daily_return: 3.07, weekly_return: 21.5, monthly_return: 86.7 },
-  { id: 4, name: "Platinum", min_amount_usd: 100, daily_return: 5.61, weekly_return: 39.3, monthly_return: 157.21 },
-  { id: 5, name: "Diamond", min_amount_usd: 200, daily_return: 9.97, weekly_return: 69.83, monthly_return: 279.3 },
-  { id: 6, name: "Ruby", min_amount_usd: 400, daily_return: 17.37, weekly_return: 121.6, monthly_return: 486.4 },
-  { id: 7, name: "Emerald", min_amount_usd: 500, daily_return: 22.42, weekly_return: 157, monthly_return: 628 },
-  { id: 8, name: "Titanium", min_amount_usd: 1000, daily_return: 41.72, weekly_return: 292.1, monthly_return: 1168.4 },
+  { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3 },
+  { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7 },
+  { id: 3, name: "Gold", min_amount_usd: 50, daily_return: 3.07 },
+  { id: 4, name: "Platinum", min_amount_usd: 100, daily_return: 5.61 },
+  { id: 5, name: "Diamond", min_amount_usd: 200, daily_return: 9.97 },
+  { id: 6, name: "Ruby", min_amount_usd: 400, daily_return: 17.37 },
+  { id: 7, name: "Emerald", min_amount_usd: 500, daily_return: 22.42 },
+  { id: 8, name: "Titanium", min_amount_usd: 1000, daily_return: 41.72 },
 ];
 
 // ---------------------- Helper Functions ----------------------
@@ -78,11 +78,20 @@ async function generateReferralCode() {
   return crypto.randomBytes(3).toString("hex").toUpperCase();
 }
 
-function getLevelAndBonus(smallestSideAmount) {
-  if (smallestSideAmount >= 150) return { level: 3, bonusPercent: 0.15 };
-  if (smallestSideAmount >= 100) return { level: 2, bonusPercent: 0.08 };
-  if (smallestSideAmount >= 50) return { level: 1, bonusPercent: 0.04 };
-  return { level: 0, bonusPercent: 0 };
+// Get referral bonus %
+function getReferralPercent(level) {
+  if (level === 1) return 0.03;
+  if (level === 2) return 0.05;
+  if (level === 3) return 0.10;
+  return 0;
+}
+
+// Get matching bonus %
+function getMatchPercent(level) {
+  if (level === 1) return 0.04;
+  if (level === 2) return 0.08;
+  if (level === 3) return 0.15;
+  return 0;
 }
 
 // =======================================================
@@ -124,6 +133,11 @@ app.post("/register", async (req, res) => {
           "A",
           1,
         ]);
+
+        // Level 1 referral bonus instantly
+        const level1Bonus = 0.03 * 0; // 0 because balance is 0 on registration
+        await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level1Bonus, referrer.id]);
+
         const [[second]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [referrer.id]);
         if (second && second.referrer_id) {
           await pool.query("INSERT INTO referrals (referred_user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
@@ -132,6 +146,11 @@ app.post("/register", async (req, res) => {
             "B",
             2,
           ]);
+
+          // Level 2 referral bonus instantly
+          const level2Bonus = 0.05 * 0;
+          await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level2Bonus, second.referrer_id]);
+
           const [[third]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [
             second.referrer_id,
           ]);
@@ -142,6 +161,10 @@ app.post("/register", async (req, res) => {
               "A",
               3,
             ]);
+
+            // Level 3 referral bonus instantly
+            const level3Bonus = 0.10 * 0;
+            await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level3Bonus, third.referrer_id]);
           }
         }
       }
@@ -310,6 +333,18 @@ app.post("/deposit", ensureAuth, async (req, res) => {
       "INSERT INTO deposits (user_id, plan_id, amount, wallet, txid, status, created_at) VALUES (?,?,?,?,?,?,NOW())",
       [userId, plan_id, amount, wallet, txid, "Pending"]
     );
+
+    // --- Instant Matching Bonus for referrers ---
+    const [[referral]] = await pool.query(
+      "SELECT * FROM referrals WHERE referred_user_id = ?",
+      [userId]
+    );
+    if (referral) {
+      const matchPercent = getMatchPercent(referral.level);
+      const bonus = amount * matchPercent;
+      await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [bonus, referral.referrer_id]);
+    }
+
     res.redirect("/dashboard");
   } catch (err) {
     console.error(err);
@@ -355,24 +390,32 @@ cron.schedule("* * * * *", async () => {
       const [plan] = await pool.query("SELECT daily_return FROM plans WHERE id = ?", [dep.plan_id]);
       if (!plan.length) continue;
 
-      const dailyReturn = plan[0].daily_return;
+      const dailyGainUSD = plan[0].daily_return;
       const lastUpdated = dep.last_updated ? new Date(dep.last_updated) : null;
-      const daysPassed = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : 1;
+            const daysPassed = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : 1;
 
       if (daysPassed >= 1) {
-        const gain = dep.amount * (dailyReturn / 100) * daysPassed;
+        const gain = dailyGainUSD * daysPassed;
 
+        // Update deposit totals
         await pool.query(`
           UPDATE deposits 
           SET daily_gain = ?, total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
           WHERE id = ?
         `, [gain, gain, now, dep.id]);
 
-        await pool.query(`
-          UPDATE users SET balance = balance + ? WHERE id = ?
-        `, [gain, dep.user_id]);
+        // Add gain to user's balance
+        await pool.query(`UPDATE users SET balance = balance + ? WHERE id = ?`, [gain, dep.user_id]);
 
-        console.log(`✅ Added $${gain.toFixed(2)} for user ${dep.user_id}`);
+        // --- Matching Bonus for Referrers ---
+        const [referrals] = await pool.query("SELECT * FROM referrals WHERE referred_user_id = ?", [dep.user_id]);
+        for (const ref of referrals) {
+          const matchPercent = getMatchPercent(ref.level);
+          const matchBonus = gain * matchPercent;
+          await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [matchBonus, ref.referrer_id]);
+        }
+
+        console.log(`✅ Added $${gain.toFixed(2)} daily gain for user ${dep.user_id}`);
       }
     }
 
@@ -386,3 +429,4 @@ cron.schedule("* * * * *", async () => {
 // SERVER START
 // =======================================================
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+

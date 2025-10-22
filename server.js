@@ -1,4 +1,7 @@
-// server.js
+// ========================================================
+// server.js — Stonebridge Capital
+// ========================================================
+
 require("dotenv").config();
 const express = require("express");
 const session = require("express-session");
@@ -14,17 +17,17 @@ const cron = require("node-cron");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// --- EJS setup ---
+// ---------------------- EJS setup ----------------------
 app.set("view engine", "ejs");
 app.set("views", __dirname + "/views");
 app.use(expressLayouts);
 app.use(express.static("public"));
 
-// --- Middleware ---
+// ---------------------- Middleware ----------------------
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// --- MySQL Session Store with SSL ---
+// ---------------------- MySQL Session Store ----------------------
 let sessionStoreOptions = {
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT) || 3306,
@@ -48,7 +51,7 @@ app.use(
   })
 );
 
-// --- Auth Middleware ---
+// ---------------------- Auth Middleware ----------------------
 function ensureAuth(req, res, next) {
   if (req.session.user) return next();
   res.redirect("/login");
@@ -58,7 +61,7 @@ function ensureAdmin(req, res, next) {
   res.redirect("/login");
 }
 
-// --- Static Plans ---
+// ---------------------- Static Plans ----------------------
 const plans = [
   { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3, weekly_return: 9.1, monthly_return: 36.41 },
   { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7, weekly_return: 12.13, monthly_return: 48.55 },
@@ -70,7 +73,7 @@ const plans = [
   { id: 8, name: "Titanium", min_amount_usd: 1000, daily_return: 41.72, weekly_return: 292.1, monthly_return: 1168.4 },
 ];
 
-// --- Helper Functions ---
+// ---------------------- Helper Functions ----------------------
 async function generateReferralCode() {
   return crypto.randomBytes(3).toString("hex").toUpperCase();
 }
@@ -82,14 +85,16 @@ function getLevelAndBonus(smallestSideAmount) {
   return { level: 0, bonusPercent: 0 };
 }
 
-// --- ROUTES ---
+// =======================================================
+// ROUTES
+// =======================================================
 app.get("/", (req, res) => res.redirect("/login"));
 app.get("/login", (req, res) => res.render("login", { error: null, message: null, user: req.session.user }));
 app.get("/register", (req, res) =>
   res.render("register", { error: null, message: null, referral: req.query.ref || "", user: req.session.user })
 );
 
-// --- REGISTER POST ---
+// ---------------------- REGISTER ----------------------
 app.post("/register", async (req, res) => {
   const { name, email, password, wallet, referral } = req.body;
   try {
@@ -107,36 +112,33 @@ app.post("/register", async (req, res) => {
       "INSERT INTO users (name,email,password,wallet_address,balance,referral_code) VALUES (?,?,?,?,?,?)",
       [name, email, hash, wallet, 0, referralCode]
     );
-
     const newUserId = result.insertId;
 
     // --- 3-Level Referral System ---
     if (referral) {
       const [[referrer]] = await pool.query("SELECT id FROM users WHERE referral_code = ?", [referral]);
       if (referrer) {
-        await pool.query("INSERT INTO referrals (user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
+        await pool.query("INSERT INTO referrals (referred_user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
           newUserId,
           referrer.id,
           "A",
           1,
         ]);
-
-        const [[secondLevel]] = await pool.query("SELECT referrer_id FROM referrals WHERE user_id = ?", [referrer.id]);
-        if (secondLevel && secondLevel.referrer_id) {
-          await pool.query("INSERT INTO referrals (user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
+        const [[second]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [referrer.id]);
+        if (second && second.referrer_id) {
+          await pool.query("INSERT INTO referrals (referred_user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
             newUserId,
-            secondLevel.referrer_id,
+            second.referrer_id,
             "B",
             2,
           ]);
-
-          const [[thirdLevel]] = await pool.query("SELECT referrer_id FROM referrals WHERE user_id = ?", [
-            secondLevel.referrer_id,
+          const [[third]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [
+            second.referrer_id,
           ]);
-          if (thirdLevel && thirdLevel.referrer_id) {
-            await pool.query("INSERT INTO referrals (user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
+          if (third && third.referrer_id) {
+            await pool.query("INSERT INTO referrals (referred_user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
               newUserId,
-              thirdLevel.referrer_id,
+              third.referrer_id,
               "A",
               3,
             ]);
@@ -152,7 +154,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-// --- LOGIN POST ---
+// ---------------------- LOGIN ----------------------
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -186,37 +188,27 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// --- DASHBOARD ---
+// ---------------------- DASHBOARD ----------------------
 app.get("/dashboard", ensureAuth, async (req, res) => {
   try {
     const userId = req.session.user.id;
-
-    const [userRows] = await pool.query(
+    const [[user]] = await pool.query(
       "SELECT id, name AS username, email, wallet_address AS wallet, balance, referral_code FROM users WHERE id = ?",
       [userId]
     );
-    if (!userRows.length) return res.redirect("/login");
+    if (!user) return res.redirect("/login");
 
-    let user = userRows[0];
     user.balance = Number(user.balance || 0);
     user.referral_link = `${process.env.APP_URL}/register?ref=${user.referral_code}`;
 
     const [deposits] = await pool.query(
-      `SELECT d.id, d.amount, d.wallet, d.txid, d.status, d.created_at, d.daily_gain, d.weekly_gain, d.monthly_gain,
-              p.name AS plan_name
+      `SELECT d.*, p.name AS plan_name
        FROM deposits d
        LEFT JOIN plans p ON d.plan_id = p.id
        WHERE d.user_id = ?
        ORDER BY d.id DESC`,
       [userId]
     );
-
-    const depositsWithGains = (deposits || []).map((dep) => ({
-      ...dep,
-      total_daily_gain: dep.daily_gain,
-      total_weekly_gain: dep.weekly_gain,
-      total_monthly_gain: dep.monthly_gain,
-    }));
 
     const [referrals] = await pool.query(
       `SELECT r.*, u.name AS referred_name, u.email AS referred_email
@@ -227,32 +219,17 @@ app.get("/dashboard", ensureAuth, async (req, res) => {
       [userId]
     );
 
-    const sideTotals = { A: 0, B: 0 };
-    (referrals || []).forEach((r) => {
-      const amount = Number(r.matched_amount || 0);
-      const side = (r.side || "").toUpperCase();
-      if (side === "A" || side === "B") sideTotals[side] += amount;
-    });
+    const referralsA = referrals.filter((r) => (r.side || "").toUpperCase() === "A");
+    const referralsB = referrals.filter((r) => (r.side || "").toUpperCase() === "B");
 
-    const smallestSide = Math.min(sideTotals.A, sideTotals.B);
-    const { level, bonusPercent } = getLevelAndBonus(smallestSide);
-    const matchingBonus = smallestSide * bonusPercent;
-
-    user.sideTotals = sideTotals;
-    user.matchedLevel = level;
-    user.matchingBonus = matchingBonus.toFixed(2);
-
-    const referralsA = (referrals || []).filter((r) => (r.side || "").toUpperCase() === "A");
-    const referralsB = (referrals || []).filter((r) => (r.side || "").toUpperCase() === "B");
-
-    res.render("dashboard", { user, deposits: depositsWithGains, referralsA, referralsB });
+    res.render("dashboard", { user, deposits, referralsA, referralsB });
   } catch (err) {
     console.error("Dashboard error:", err);
     res.status(500).send("Error loading dashboard");
   }
 });
 
-// --- ADMIN DASHBOARD ---
+// ---------------------- ADMIN ----------------------
 app.get("/admin", ensureAdmin, async (req, res) => {
   try {
     const [users] = await pool.query("SELECT * FROM users");
@@ -284,13 +261,13 @@ app.get("/admin", ensureAdmin, async (req, res) => {
   }
 });
 
-// --- ADMIN APPROVE / REJECT DEPOSITS ---
+// ---------------------- Admin Deposit Approval ----------------------
 app.post("/admin/deposit/:id/:action", ensureAdmin, async (req, res) => {
   try {
     const { id, action } = req.params;
     if (!["approve", "reject"].includes(action)) return res.status(400).send("Invalid action");
 
-    const status = action === "approve" ? "Active" : "Rejected"; // <- UPDATED
+    const status = action === "approve" ? "Active" : "Rejected";
     await pool.query("UPDATE deposits SET status = ? WHERE id = ?", [status, id]);
     res.redirect("/admin");
   } catch (err) {
@@ -299,7 +276,7 @@ app.post("/admin/deposit/:id/:action", ensureAdmin, async (req, res) => {
   }
 });
 
-// --- ADMIN APPROVE / REJECT WITHDRAWALS ---
+// ---------------------- Admin Withdraw Approval ----------------------
 app.post("/admin/withdraw/:id/:action", ensureAdmin, async (req, res) => {
   try {
     const { id, action } = req.params;
@@ -314,13 +291,13 @@ app.post("/admin/withdraw/:id/:action", ensureAdmin, async (req, res) => {
   }
 });
 
-// --- LOGOUT ---
+// ---------------------- Logout ----------------------
 app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/login");
 });
 
-// --- DEPOSIT ---
+// ---------------------- Deposit / Withdraw ----------------------
 app.get("/deposit", ensureAuth, (req, res) => res.render("deposit", { user: req.session.user, plans }));
 app.post("/deposit", ensureAuth, async (req, res) => {
   try {
@@ -340,7 +317,6 @@ app.post("/deposit", ensureAuth, async (req, res) => {
   }
 });
 
-// --- WITHDRAW ---
 app.get("/withdraw", ensureAuth, (req, res) => res.render("withdraw", { user: req.session.user }));
 app.post("/withdraw", ensureAuth, async (req, res) => {
   try {
@@ -361,40 +337,52 @@ app.post("/withdraw", ensureAuth, async (req, res) => {
   }
 });
 
-// --- CRON: Daily Gains Update ---
-cron.schedule("0 0 * * *", async () => {
-  console.log("Running daily gains update...");
-
+// =======================================================
+// 🕒 Cron Job — Runs every minute, adds gains once per day
+// =======================================================
+cron.schedule("* * * * *", async () => {
+  console.log("⏳ Running gains updater...");
   try {
-    const [deposits] = await pool.query(
-      `SELECT d.id, d.user_id, d.amount, d.status, d.daily_gain, d.weekly_gain, d.monthly_gain,
-              p.daily_return, p.weekly_return, p.monthly_return
-       FROM deposits d
-       LEFT JOIN plans p ON d.plan_id = p.id
-       WHERE d.status = 'Active'`
-    );
+    const [deposits] = await pool.query(`
+      SELECT id, user_id, amount, status, daily_gain, plan_id, last_updated
+      FROM deposits
+      WHERE status = 'Active'
+    `);
 
-    await Promise.all(
-      deposits.map(dep => {
-        const dailyGain = dep.amount * (dep.daily_return / 100);
-        const weeklyGain = dep.amount * (dep.weekly_return / 100);
-        const monthlyGain = dep.amount * (dep.monthly_return / 100);
+    const now = new Date();
 
-        return Promise.all([
-          pool.query(
-            "UPDATE deposits SET daily_gain=?, weekly_gain=?, monthly_gain=? WHERE id=?",
-            [dailyGain, weeklyGain, monthlyGain, dep.id]
-          ),
-          pool.query("UPDATE users SET balance = balance + ? WHERE id=?", [dailyGain, dep.user_id])
-        ]);
-      })
-    );
+    for (const dep of deposits) {
+      const [plan] = await pool.query("SELECT daily_return FROM plans WHERE id = ?", [dep.plan_id]);
+      if (!plan.length) continue;
 
-    console.log(`Daily gains updated for ${deposits.length} deposits.`);
+      const dailyReturn = plan[0].daily_return;
+      const lastUpdated = dep.last_updated ? new Date(dep.last_updated) : null;
+      const daysPassed = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : 1;
+
+      if (daysPassed >= 1) {
+        const gain = dep.amount * (dailyReturn / 100) * daysPassed;
+
+        await pool.query(`
+          UPDATE deposits 
+          SET daily_gain = ?, total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
+          WHERE id = ?
+        `, [gain, gain, now, dep.id]);
+
+        await pool.query(`
+          UPDATE users SET balance = balance + ? WHERE id = ?
+        `, [gain, dep.user_id]);
+
+        console.log(`✅ Added $${gain.toFixed(2)} for user ${dep.user_id}`);
+      }
+    }
+
+    console.log("✅ Gains update cycle complete.");
   } catch (err) {
-    console.error("Daily gain update error:", err);
+    console.error("❌ Error updating gains:", err);
   }
 });
 
-// --- SERVER ---
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// =======================================================
+// SERVER START
+// =======================================================
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

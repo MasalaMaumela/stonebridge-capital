@@ -62,6 +62,7 @@ function ensureAdmin(req, res, next) {
 }
 
 // ---------------------- Static Plans ----------------------
+// daily_return here is treated as fixed USD per day (not percent)
 const plans = [
   { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3 },
   { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7 },
@@ -78,24 +79,79 @@ async function generateReferralCode() {
   return crypto.randomBytes(3).toString("hex").toUpperCase();
 }
 
-// Get referral bonus %
+// referral percents (one-time, based on deposit amount)
 function getReferralPercent(level) {
-  if (level === 1) return 0.03;
-  if (level === 2) return 0.05;
-  if (level === 3) return 0.10;
+  if (level === 1) return 0.03; // 3%
+  if (level === 2) return 0.05; // 5%
+  if (level === 3) return 0.10; // 10%
   return 0;
 }
 
-// Get matching bonus %
+// matching percents (one-time, based on deposit amount)
 function getMatchPercent(level) {
-  if (level === 1) return 0.04;
-  if (level === 2) return 0.08;
-  if (level === 3) return 0.15;
+  if (level === 1) return 0.04; // 4%
+  if (level === 2) return 0.08; // 8%
+  if (level === 3) return 0.15; // 15%
   return 0;
 }
 
 // =======================================================
+// ACTIVATE DEPOSIT (ON ADMIN APPROVAL)
+// - marks deposit Active (if not already active)
+// - adds deposit.amount to user's balance
+// - pays one-time referral bonuses and one-time match bonuses
+// =======================================================
+async function activateDeposit(depositId) {
+  try {
+    const [rows] = await pool.query("SELECT * FROM deposits WHERE id = ?", [depositId]);
+    if (!rows.length) return;
+    const dep = rows[0];
+
+    // already active? do nothing
+    if (dep.status === "Active") {
+      console.log(`Deposit ${depositId} already active - skipping activation.`);
+      return;
+    }
+
+    // mark Active and set last_updated
+    await pool.query("UPDATE deposits SET status = 'Active', last_updated = NOW() WHERE id = ?", [depositId]);
+
+    // add initial deposit amount to user's balance
+    await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [dep.amount, dep.user_id]);
+    console.log(`💰 Added initial deposit $${dep.amount} to user ${dep.user_id}`);
+
+    // fetch referrals (upline entries) for this referred_user_id
+    const [referrals] = await pool.query("SELECT * FROM referrals WHERE referred_user_id = ?", [dep.user_id]);
+
+    // Pay one-time referral and match bonuses to each referrer in the chain (if present)
+    for (const ref of referrals) {
+      const refPercent = getReferralPercent(ref.level);
+      const matchPercent = getMatchPercent(ref.level);
+
+      if (refPercent > 0) {
+        const refBonus = dep.amount * refPercent;
+        await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [refBonus, ref.referrer_id]);
+        console.log(`🎁 Referral bonus $${refBonus.toFixed(2)} -> referrer ${ref.referrer_id} (level ${ref.level})`);
+      }
+
+      if (matchPercent > 0) {
+        const matchBonus = dep.amount * matchPercent;
+        await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [matchBonus, ref.referrer_id]);
+        console.log(`🎯 Match bonus $${matchBonus.toFixed(2)} -> referrer ${ref.referrer_id} (level ${ref.level})`);
+      }
+    }
+
+    console.log(`✅ Deposit ${depositId} activated and bonuses paid (if applicable).`);
+  } catch (err) {
+    console.error("activateDeposit error:", err);
+    throw err;
+  }
+}
+
+// =======================================================
 // ROUTES
+// (All your existing routes retained; minimal changes only
+//  to call activateDeposit when admin approves a deposit.)
 // =======================================================
 app.get("/", (req, res) => res.redirect("/login"));
 app.get("/login", (req, res) => res.render("login", { error: null, message: null, user: req.session.user }));
@@ -123,7 +179,7 @@ app.post("/register", async (req, res) => {
     );
     const newUserId = result.insertId;
 
-    // --- 3-Level Referral System ---
+    // --- 3-Level referral tracking (no bonuses on registration; bonuses apply on deposit activation) ---
     if (referral) {
       const [[referrer]] = await pool.query("SELECT id FROM users WHERE referral_code = ?", [referral]);
       if (referrer) {
@@ -134,10 +190,6 @@ app.post("/register", async (req, res) => {
           1,
         ]);
 
-        // Level 1 referral bonus instantly
-        const level1Bonus = 0.03 * 0; // 0 because balance is 0 on registration
-        await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level1Bonus, referrer.id]);
-
         const [[second]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [referrer.id]);
         if (second && second.referrer_id) {
           await pool.query("INSERT INTO referrals (referred_user_id, referrer_id, side, level) VALUES (?,?,?,?)", [
@@ -146,10 +198,6 @@ app.post("/register", async (req, res) => {
             "B",
             2,
           ]);
-
-          // Level 2 referral bonus instantly
-          const level2Bonus = 0.05 * 0;
-          await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level2Bonus, second.referrer_id]);
 
           const [[third]] = await pool.query("SELECT referrer_id FROM referrals WHERE referred_user_id = ?", [
             second.referrer_id,
@@ -161,10 +209,6 @@ app.post("/register", async (req, res) => {
               "A",
               3,
             ]);
-
-            // Level 3 referral bonus instantly
-            const level3Bonus = 0.10 * 0;
-            await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [level3Bonus, third.referrer_id]);
           }
         }
       }
@@ -215,11 +259,12 @@ app.post("/login", async (req, res) => {
 app.get("/dashboard", ensureAuth, async (req, res) => {
   try {
     const userId = req.session.user.id;
-    const [[user]] = await pool.query(
+    const [userRows] = await pool.query(
       "SELECT id, name AS username, email, wallet_address AS wallet, balance, referral_code FROM users WHERE id = ?",
       [userId]
     );
-    if (!user) return res.redirect("/login");
+    if (!userRows.length) return res.redirect("/login");
+    const user = userRows[0];
 
     user.balance = Number(user.balance || 0);
     user.referral_link = `${process.env.APP_URL}/register?ref=${user.referral_code}`;
@@ -290,8 +335,13 @@ app.post("/admin/deposit/:id/:action", ensureAdmin, async (req, res) => {
     const { id, action } = req.params;
     if (!["approve", "reject"].includes(action)) return res.status(400).send("Invalid action");
 
-    const status = action === "approve" ? "Active" : "Rejected";
-    await pool.query("UPDATE deposits SET status = ? WHERE id = ?", [status, id]);
+    if (action === "approve") {
+      // activateDeposit will check status and only run once per deposit
+      await activateDeposit(id);
+    } else {
+      await pool.query("UPDATE deposits SET status = 'Rejected' WHERE id = ?", [id]);
+    }
+
     res.redirect("/admin");
   } catch (err) {
     console.error(err);
@@ -314,12 +364,6 @@ app.post("/admin/withdraw/:id/:action", ensureAdmin, async (req, res) => {
   }
 });
 
-// ---------------------- Logout ----------------------
-app.get("/logout", (req, res) => {
-  req.session.destroy();
-  res.redirect("/login");
-});
-
 // ---------------------- Deposit / Withdraw ----------------------
 app.get("/deposit", ensureAuth, (req, res) => res.render("deposit", { user: req.session.user, plans }));
 app.post("/deposit", ensureAuth, async (req, res) => {
@@ -333,17 +377,6 @@ app.post("/deposit", ensureAuth, async (req, res) => {
       "INSERT INTO deposits (user_id, plan_id, amount, wallet, txid, status, created_at) VALUES (?,?,?,?,?,?,NOW())",
       [userId, plan_id, amount, wallet, txid, "Pending"]
     );
-
-    // --- Instant Matching Bonus for referrers ---
-    const [[referral]] = await pool.query(
-      "SELECT * FROM referrals WHERE referred_user_id = ?",
-      [userId]
-    );
-    if (referral) {
-      const matchPercent = getMatchPercent(referral.level);
-      const bonus = amount * matchPercent;
-      await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [bonus, referral.referrer_id]);
-    }
 
     res.redirect("/dashboard");
   } catch (err) {
@@ -373,13 +406,13 @@ app.post("/withdraw", ensureAuth, async (req, res) => {
 });
 
 // =======================================================
-// 🕒 Cron Job — Runs every minute, adds gains once per day
+// 🕒 Cron Job — Runs every minute, adds daily USD gain (fixed)
 // =======================================================
 cron.schedule("* * * * *", async () => {
-  console.log("⏳ Running gains updater...");
+  console.log("⏳ Running daily gains updater...");
   try {
     const [deposits] = await pool.query(`
-      SELECT id, user_id, amount, status, daily_gain, plan_id, last_updated
+      SELECT id, user_id, amount, status, plan_id, last_updated
       FROM deposits
       WHERE status = 'Active'
     `);
@@ -390,36 +423,28 @@ cron.schedule("* * * * *", async () => {
       const [plan] = await pool.query("SELECT daily_return FROM plans WHERE id = ?", [dep.plan_id]);
       if (!plan.length) continue;
 
-      const dailyGainUSD = plan[0].daily_return;
+      const dailyGainUSD = plan[0].daily_return; // fixed USD/day
       const lastUpdated = dep.last_updated ? new Date(dep.last_updated) : null;
-            const daysPassed = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : 1;
+      const daysPassed = lastUpdated ? Math.floor((now - lastUpdated) / (1000 * 60 * 60 * 24)) : 1;
 
       if (daysPassed >= 1) {
         const gain = dailyGainUSD * daysPassed;
 
-        // Update deposit totals
-        await pool.query(`
-          UPDATE deposits 
-          SET daily_gain = ?, total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
-          WHERE id = ?
-        `, [gain, gain, now, dep.id]);
+        // update deposit totals
+        await pool.query(
+          `UPDATE deposits 
+           SET total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
+           WHERE id = ?`,
+          [gain, now, dep.id]
+        );
 
-        // Add gain to user's balance
-        await pool.query(`UPDATE users SET balance = balance + ? WHERE id = ?`, [gain, dep.user_id]);
-
-        // --- Matching Bonus for Referrers ---
-        const [referrals] = await pool.query("SELECT * FROM referrals WHERE referred_user_id = ?", [dep.user_id]);
-        for (const ref of referrals) {
-          const matchPercent = getMatchPercent(ref.level);
-          const matchBonus = gain * matchPercent;
-          await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [matchBonus, ref.referrer_id]);
-        }
-
-        console.log(`✅ Added $${gain.toFixed(2)} daily gain for user ${dep.user_id}`);
+        // add gain to user's balance
+        await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [gain, dep.user_id]);
+        console.log(`✅ Added $${gain.toFixed(2)} gain to user ${dep.user_id}`);
       }
     }
 
-    console.log("✅ Gains update cycle complete.");
+    console.log("✅ Daily gains update complete.");
   } catch (err) {
     console.error("❌ Error updating gains:", err);
   }
@@ -429,4 +454,3 @@ cron.schedule("* * * * *", async () => {
 // SERVER START
 // =======================================================
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-

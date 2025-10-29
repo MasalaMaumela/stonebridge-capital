@@ -98,8 +98,8 @@ function getMatchPercent(level) {
 // =======================================================
 // ACTIVATE DEPOSIT (ON ADMIN APPROVAL)
 // - marks deposit Active (if not already active)
-// - adds deposit.amount to user's balance
-// - pays one-time referral bonuses and one-time match bonuses
+// - DOES NOT add deposit.amount to user's balance (per request)
+// - pays one-time referral bonuses and one-time match bonuses (based on deposit.amount)
 // =======================================================
 async function activateDeposit(depositId) {
   try {
@@ -115,10 +115,7 @@ async function activateDeposit(depositId) {
 
     // mark Active and set last_updated
     await pool.query("UPDATE deposits SET status = 'Active', last_updated = NOW() WHERE id = ?", [depositId]);
-
-    // add initial deposit amount to user's balance
-    await pool.query("UPDATE users SET balance = balance + ? WHERE id = ?", [dep.amount, dep.user_id]);
-    console.log(`💰 Added initial deposit $${dep.amount} to user ${dep.user_id}`);
+    console.log(`✅ Deposit ${depositId} marked Active.`);
 
     // fetch referrals (upline entries) for this referred_user_id
     const [referrals] = await pool.query("SELECT * FROM referrals WHERE referred_user_id = ?", [dep.user_id]);
@@ -141,7 +138,7 @@ async function activateDeposit(depositId) {
       }
     }
 
-    console.log(`✅ Deposit ${depositId} activated and bonuses paid (if applicable).`);
+    console.log(`✅ Deposit ${depositId} activated and one-time bonuses paid (if applicable).`);
   } catch (err) {
     console.error("activateDeposit error:", err);
     throw err;
@@ -150,8 +147,6 @@ async function activateDeposit(depositId) {
 
 // =======================================================
 // ROUTES
-// (All your existing routes retained; minimal changes only
-//  to call activateDeposit when admin approves a deposit.)
 // =======================================================
 app.get("/", (req, res) => res.redirect("/login"));
 app.get("/login", (req, res) => res.render("login", { error: null, message: null, user: req.session.user }));
@@ -433,9 +428,9 @@ cron.schedule("* * * * *", async () => {
         // update deposit totals
         await pool.query(
           `UPDATE deposits 
-           SET total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
+           SET daily_gain = ?, total_earned = IFNULL(total_earned, 0) + ?, last_updated = ? 
            WHERE id = ?`,
-          [gain, now, dep.id]
+          [dailyGainUSD, gain, now, dep.id]
         );
 
         // add gain to user's balance

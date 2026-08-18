@@ -66,12 +66,7 @@ function ensureAdmin(req, res, next) {
 const plans = [
   { id: 1, name: "Bronze", min_amount_usd: 15, daily_return: 1.3 },
   { id: 2, name: "Silver", min_amount_usd: 25, daily_return: 1.7 },
-  { id: 3, name: "Gold", min_amount_usd: 50, daily_return: 3.07 },
-  { id: 4, name: "Platinum", min_amount_usd: 100, daily_return: 5.61 },
-  { id: 5, name: "Diamond", min_amount_usd: 200, daily_return: 9.97 },
-  { id: 6, name: "Ruby", min_amount_usd: 400, daily_return: 17.37 },
-  { id: 7, name: "Emerald", min_amount_usd: 500, daily_return: 22.42 },
-  { id: 8, name: "Titanium", min_amount_usd: 1000, daily_return: 41.72 },
+
 ];
 
 // ---------------------- Helper Functions ----------------------

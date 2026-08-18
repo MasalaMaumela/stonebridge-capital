@@ -24,8 +24,6 @@
           <th>Plan</th>
           <th>Minimum</th>
           <th>Daily</th>
-          <th>Weekly</th>
-          <th>Monthly</th>
           <th></th>
         </tr>
       </thead>
@@ -35,8 +33,8 @@
             <td><%= plan.name %></td>
             <td>$<%= plan.min_amount %></td>
             <td>$<%= plan.daily_return %></td>
-            <td>$<%= plan.weekly_return %></td>
-            <td>$<%= plan.monthly_return %></td>
+            
+            
             <td>
               <a href="/choose-plan/<%= plan.id %>" class="button">Select</a>
             </td>

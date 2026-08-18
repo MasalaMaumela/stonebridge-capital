@@ -111,7 +111,7 @@ async function setupDatabase() {
         (5, 'Diamond', 200.00, 9.97),
         (6, 'Ruby', 400.00, 17.37),
         (7, 'Emerald', 500.00, 22.42),
-        (8, 'Titanium', 1000.00, 41.72)
+        
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         min_amount_usd = VALUES(min_amount_usd),

@@ -105,14 +105,8 @@ async function setupDatabase() {
         (id, name, min_amount_usd, daily_return)
       VALUES
         (1, 'Bronze', 15.00, 1.30),
-        (2, 'Silver', 25.00, 1.70),
-        (3, 'Gold', 50.00, 3.07),
-        (4, 'Platinum', 100.00, 5.61),
-        (5, 'Diamond', 200.00, 9.97),
-        (6, 'Ruby', 400.00, 17.37),
         (7, 'Emerald', 500.00, 22.42),
-        
-      ON DUPLICATE KEY UPDATE
+        ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         min_amount_usd = VALUES(min_amount_usd),
         daily_return = VALUES(daily_return)

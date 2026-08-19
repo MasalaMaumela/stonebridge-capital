@@ -1036,7 +1036,7 @@ app.post(
 
 
 // ========================================================
-// USER DASHBOARD
+// DASHBOARD
 // ========================================================
 
 app.get(
@@ -1051,7 +1051,7 @@ app.get(
 
 
       // ==================================================
-      // USER
+      // USER INFORMATION
       // ==================================================
 
       const [userRows] =
@@ -1097,7 +1097,7 @@ app.get(
 
 
       // ==================================================
-      // INVESTMENTS
+      // USER INVESTMENTS
       // ==================================================
 
       const [deposits] =
@@ -1122,6 +1122,46 @@ app.get(
 
 
       // ==================================================
+      // USER WITHDRAWALS
+      //
+      // Fee = 10%
+      // Net amount = 90%
+      //
+      // These values are calculated for display and do
+      // not require changes to the withdrawals table.
+      // ==================================================
+
+      const [withdrawals] =
+        await pool.query(
+          `
+          SELECT
+            id,
+            amount,
+            wallet,
+            status,
+            created_at,
+
+            ROUND(
+              amount * 0.10,
+              2
+            ) AS withdrawal_fee,
+
+            ROUND(
+              amount * 0.90,
+              2
+            ) AS net_amount
+
+          FROM withdrawals
+
+          WHERE user_id = ?
+
+          ORDER BY id DESC
+          `,
+          [userId]
+        );
+
+
+      // ==================================================
       // REFERRALS
       // ==================================================
 
@@ -1129,20 +1169,18 @@ app.get(
         await pool.query(
           `
           SELECT
-            r.id,
-            r.referrer_id,
-            r.referred_user_id,
-            r.side,
-            r.level
+            r.*,
+            u.name AS referred_name,
+            u.email AS referred_email
 
           FROM referrals r
 
+          LEFT JOIN users u
+            ON r.referred_user_id = u.id
+
           WHERE r.referrer_id = ?
 
-          ORDER BY
-            r.side,
-            r.level,
-            r.id ASC
+          ORDER BY r.side, r.id ASC
           `,
           [userId]
         );
@@ -1165,32 +1203,6 @@ app.get(
 
 
       // ==================================================
-      // PENDING WITHDRAWALS
-      // ==================================================
-
-      const [pendingWithdrawals] =
-        await pool.query(
-          `
-          SELECT
-            id,
-            amount,
-            wallet,
-            status,
-            created_at
-
-          FROM withdrawals
-
-          WHERE user_id = ?
-
-          AND status = 'Pending'
-
-          ORDER BY id DESC
-          `,
-          [userId]
-        );
-
-
-      // ==================================================
       // RENDER DASHBOARD
       // ==================================================
 
@@ -1199,9 +1211,9 @@ app.get(
         {
           user,
           deposits,
+          withdrawals,
           referralsA,
-          referralsB,
-          pendingWithdrawals
+          referralsB
         }
       );
 

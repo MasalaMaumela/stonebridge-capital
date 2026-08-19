@@ -15,11 +15,7 @@
   </div>
 
   <nav>
-
-    <a href="/logout">
-      Logout
-    </a>
-
+    <a href="/logout">Logout</a>
   </nav>
 
 </header>
@@ -45,39 +41,31 @@
     <table class="dashboard-table">
 
       <tr>
-
-        <th>
-          Email
-        </th>
+        <th>Email</th>
 
         <td>
           <%= user.email %>
         </td>
-
       </tr>
 
-      <tr>
 
-        <th>
-          Wallet
-        </th>
+      <tr>
+        <th>Wallet</th>
 
         <td>
           <%= user.wallet || "Not set" %>
         </td>
-
       </tr>
 
-      <tr>
 
-        <th>
-          Available Balance
-        </th>
+      <tr>
+        <th>Available Balance</th>
 
         <td>
-          R<%= parseFloat(user.balance || 0).toFixed(2) %>
+          R<%= Number(
+            user.balance || 0
+          ).toFixed(2) %>
         </td>
-
       </tr>
 
     </table>
@@ -92,6 +80,7 @@
         💰 Invest
       </a>
 
+
       <a
         href="/withdraw"
         class="btn withdraw-btn"
@@ -100,113 +89,6 @@
       </a>
 
     </div>
-
-  </div>
-
-
-  <!-- =========================
-       PENDING WITHDRAWALS
-  ========================= -->
-
-  <div class="dashboard-subcard pending-withdrawals">
-
-    <h3>
-      💸 Pending Withdrawals
-    </h3>
-
-
-    <% if (
-      !pendingWithdrawals ||
-      pendingWithdrawals.length === 0
-    ) { %>
-
-      <div class="no-pending">
-
-        <p>
-          You have no pending withdrawals.
-        </p>
-
-      </div>
-
-    <% } else { %>
-
-      <div class="table-wrapper">
-
-        <table class="dashboard-table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                Amount
-              </th>
-
-              <th>
-                Wallet
-              </th>
-
-              <th>
-                Status
-              </th>
-
-              <th>
-                Date
-              </th>
-
-            </tr>
-
-          </thead>
-
-
-          <tbody>
-
-            <% pendingWithdrawals.forEach(
-              withdrawal => {
-            %>
-
-              <tr>
-
-                <td>
-                  R<%= parseFloat(
-                    withdrawal.amount || 0
-                  ).toFixed(2) %>
-                </td>
-
-
-                <td class="wallet-cell">
-                  <%= withdrawal.wallet || "N/A" %>
-                </td>
-
-
-                <td>
-
-                  <span class="status pending">
-                    ⏳ Pending
-                  </span>
-
-                </td>
-
-
-                <td>
-
-                  <%= new Date(
-                    withdrawal.created_at
-                  ).toLocaleString() %>
-
-                </td>
-
-              </tr>
-
-            <% }) %>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    <% } %>
 
   </div>
 
@@ -221,6 +103,7 @@
       📈 Investment Plans
     </h3>
 
+
     <p class="section-description">
       Choose an investment plan that suits you.
     </p>
@@ -230,56 +113,46 @@
 
       <%
         const dashboardPlans = [
-
           {
             name: "Bronze",
             minimum: 300,
             daily: 12
           },
-
           {
             name: "Silver",
             minimum: 900,
             daily: 20
           },
-
           {
             name: "Gold",
             minimum: 1500,
             daily: 40
           },
-
           {
             name: "Platinum",
             minimum: 2500,
             daily: 77
           },
-
           {
             name: "Diamond",
             minimum: 5000,
             daily: 200
           },
-
           {
             name: "Ruby",
             minimum: 8000,
             daily: 300
           },
-
           {
             name: "Emerald",
             minimum: 12000,
             daily: 400
           }
-
         ];
       %>
 
 
-      <% dashboardPlans.forEach(
-        plan => {
-      %>
+      <% dashboardPlans.forEach(plan => { %>
 
         <div class="plan-card">
 
@@ -295,7 +168,9 @@
             </span>
 
             <strong>
-              R<%= plan.minimum.toFixed(2) %>
+              R<%= Number(
+                plan.minimum
+              ).toFixed(2) %>
             </strong>
 
           </div>
@@ -308,7 +183,9 @@
             </span>
 
             <strong>
-              R<%= plan.daily.toFixed(2) %>
+              R<%= Number(
+                plan.daily
+              ).toFixed(2) %>
             </strong>
 
           </div>
@@ -387,9 +264,7 @@
 
           <tbody>
 
-            <% deposits.forEach(
-              dep => {
-            %>
+            <% deposits.forEach(dep => { %>
 
               <tr>
 
@@ -399,21 +274,23 @@
 
 
                 <td>
-                  R<%= parseFloat(
+                  R<%= Number(
                     dep.amount || 0
                   ).toFixed(2) %>
                 </td>
 
 
                 <td>
-                  R<%= parseFloat(
-                    dep.daily_return || 0
+                  R<%= Number(
+                    dep.daily_return ||
+                    dep.daily_gain ||
+                    0
                   ).toFixed(2) %>
                 </td>
 
 
                 <td>
-                  R<%= parseFloat(
+                  R<%= Number(
                     dep.total_earned || 0
                   ).toFixed(2) %>
                 </td>
@@ -444,6 +321,184 @@
                     </span>
 
                   <% } %>
+
+                </td>
+
+              </tr>
+
+            <% }) %>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    <% } %>
+
+  </div>
+
+
+  <!-- =========================
+       MY WITHDRAWALS
+  ========================= -->
+
+  <div class="dashboard-subcard withdrawals">
+
+    <h3>
+      💸 My Withdrawals
+    </h3>
+
+
+    <% if (
+      !withdrawals ||
+      withdrawals.length === 0
+    ) { %>
+
+      <div class="empty-withdrawals">
+
+        <p>
+          You do not have any withdrawals yet.
+        </p>
+
+      </div>
+
+    <% } else { %>
+
+      <div class="table-wrapper">
+
+        <table class="dashboard-table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Requested Amount
+              </th>
+
+              <th>
+                Withdrawal Fee
+              </th>
+
+              <th>
+                Net Amount
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Date
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            <% withdrawals.forEach(
+              withdrawal => {
+            %>
+
+              <tr>
+
+                <!-- REQUESTED AMOUNT -->
+
+                <td>
+
+                  <strong>
+                    R<%= Number(
+                      withdrawal.amount || 0
+                    ).toFixed(2) %>
+                  </strong>
+
+                </td>
+
+
+                <!-- 10% FEE -->
+
+                <td>
+
+                  R<%= Number(
+                    withdrawal.withdrawal_fee || 0
+                  ).toFixed(2) %>
+
+                  <small>
+                    10%
+                  </small>
+
+                </td>
+
+
+                <!-- NET AMOUNT -->
+
+                <td>
+
+                  <strong>
+                    R<%= Number(
+                      withdrawal.net_amount || 0
+                    ).toFixed(2) %>
+                  </strong>
+
+                </td>
+
+
+                <!-- STATUS -->
+
+                <td>
+
+                  <% if (
+                    withdrawal.status ===
+                    "Pending"
+                  ) { %>
+
+                    <span class="status pending">
+                      ⏳ Pending
+                    </span>
+
+                  <% } else if (
+                    withdrawal.status ===
+                    "Approved"
+                  ) { %>
+
+                    <span class="status active">
+                      ✅ Approved
+                    </span>
+
+                  <% } else if (
+                    withdrawal.status ===
+                    "Rejected"
+                  ) { %>
+
+                    <span class="status rejected">
+                      ❌ Rejected
+                    </span>
+
+                  <% } else { %>
+
+                    <span class="status">
+                      <%= withdrawal.status %>
+                    </span>
+
+                  <% } %>
+
+                </td>
+
+
+                <!-- DATE -->
+
+                <td>
+
+                  <%= withdrawal.created_at
+                    ? new Date(
+                        withdrawal.created_at
+                      ).toLocaleDateString()
+                    : "N/A"
+                  %>
 
                 </td>
 
@@ -510,18 +565,23 @@
           1
         </div>
 
+
         <h4>
           Level 1
         </h4>
 
+
         <p>
+
           <%= (referralsA || [])
             .filter(
               r =>
                 Number(r.level) === 1
-            )
-            .length %>
+            ).length
+          %>
+
         </p>
+
 
         <span>
           Referrals
@@ -538,25 +598,31 @@
           2
         </div>
 
+
         <h4>
           Level 2
         </h4>
 
+
         <p>
+
           <%= (referralsA || [])
             .filter(
               r =>
                 Number(r.level) === 2
-            )
-            .length
+            ).length
+
             +
+
             (referralsB || [])
             .filter(
               r =>
                 Number(r.level) === 2
-            )
-            .length %>
+            ).length
+          %>
+
         </p>
+
 
         <span>
           Referrals
@@ -573,25 +639,31 @@
           3
         </div>
 
+
         <h4>
           Level 3
         </h4>
 
+
         <p>
+
           <%= (referralsA || [])
             .filter(
               r =>
                 Number(r.level) === 3
-            )
-            .length
+            ).length
+
             +
+
             (referralsB || [])
             .filter(
               r =>
                 Number(r.level) === 3
-            )
-            .length %>
+            ).length
+          %>
+
         </p>
+
 
         <span>
           Referrals
@@ -632,7 +704,6 @@ header {
 
 }
 
-
 .logo-container {
 
   display: flex;
@@ -642,7 +713,6 @@ header {
   gap: 12px;
 
 }
-
 
 .logo-container h1 {
 
@@ -654,7 +724,6 @@ header {
 
 }
 
-
 nav a {
 
   color: #1a73e8;
@@ -664,7 +733,6 @@ nav a {
   font-weight: 600;
 
 }
-
 
 nav a:hover {
 
@@ -698,7 +766,6 @@ nav a:hover {
 
 }
 
-
 .dashboard-card h2 {
 
   color: #2c3e50;
@@ -731,7 +798,6 @@ nav a:hover {
 
 }
 
-
 .dashboard-subcard h3 {
 
   color: #fff;
@@ -755,47 +821,6 @@ nav a:hover {
 
 
 /* =========================
-   PENDING WITHDRAWALS
-========================= */
-
-.pending-withdrawals {
-
-  border-left:
-    5px solid #f39c12;
-
-}
-
-
-.no-pending {
-
-  text-align: center;
-
-  padding: 15px;
-
-  color: #777;
-
-}
-
-
-.pending-withdrawals .status.pending {
-
-  color: #f39c12;
-
-  font-weight: 700;
-
-}
-
-
-.wallet-cell {
-
-  word-break: break-all;
-
-  max-width: 300px;
-
-}
-
-
-/* =========================
    TABLES
 ========================= */
 
@@ -804,7 +829,6 @@ nav a:hover {
   overflow-x: auto;
 
 }
-
 
 .dashboard-table {
 
@@ -815,7 +839,6 @@ nav a:hover {
   margin-top: 10px;
 
 }
-
 
 .dashboard-table th,
 .dashboard-table td {
@@ -828,7 +851,6 @@ nav a:hover {
 
 }
 
-
 .dashboard-table th {
 
   background-color: #1a73e8;
@@ -839,13 +861,11 @@ nav a:hover {
 
 }
 
-
 .dashboard-table tr:nth-child(even) {
 
   background-color: #f9f9f9;
 
 }
-
 
 .dashboard-table tr:hover {
 
@@ -868,7 +888,6 @@ nav a:hover {
 
 }
 
-
 .btn {
 
   display: inline-block;
@@ -885,13 +904,11 @@ nav a:hover {
 
 }
 
-
 .deposit-btn {
 
   background: #27ae60;
 
 }
-
 
 .withdraw-btn {
 
@@ -912,7 +929,6 @@ nav a:hover {
 
 }
 
-
 .plans-grid {
 
   display: grid;
@@ -926,7 +942,6 @@ nav a:hover {
   gap: 20px;
 
 }
-
 
 .plan-card {
 
@@ -947,17 +962,14 @@ nav a:hover {
 
 }
 
-
 .plan-card:hover {
 
-  transform:
-    translateY(-4px);
+  transform: translateY(-4px);
 
   box-shadow:
     0 8px 20px rgba(0,0,0,0.12);
 
 }
-
 
 .plan-card h4 {
 
@@ -969,7 +981,6 @@ nav a:hover {
 
 }
 
-
 .plan-detail {
 
   display: flex;
@@ -978,11 +989,9 @@ nav a:hover {
 
   padding: 10px 0;
 
-  border-bottom:
-    1px solid #eee;
+  border-bottom: 1px solid #eee;
 
 }
-
 
 .plan-detail span {
 
@@ -992,13 +1001,11 @@ nav a:hover {
 
 }
 
-
 .plan-detail strong {
 
   color: #2c3e50;
 
 }
-
 
 .plan-btn {
 
@@ -1020,10 +1027,40 @@ nav a:hover {
 
 }
 
-
 .plan-btn:hover {
 
   background: #1258b0;
+
+}
+
+
+/* =========================
+   WITHDRAWALS
+========================= */
+
+.withdrawals {
+
+  margin-bottom: 30px;
+
+}
+
+.withdrawals small {
+
+  display: block;
+
+  margin-top: 4px;
+
+  color: #777;
+
+  font-size: 0.8rem;
+
+}
+
+.empty-withdrawals {
+
+  padding: 10px 0;
+
+  color: #666;
 
 }
 
@@ -1068,7 +1105,6 @@ nav a:hover {
 
 }
 
-
 .referral-card {
 
   background: #fff;
@@ -1084,7 +1120,6 @@ nav a:hover {
 
 }
 
-
 .referral-icon {
 
   width: 45px;
@@ -1093,8 +1128,7 @@ nav a:hover {
 
   line-height: 45px;
 
-  margin:
-    0 auto 10px;
+  margin: 0 auto 10px;
 
   border-radius: 50%;
 
@@ -1106,7 +1140,6 @@ nav a:hover {
 
 }
 
-
 .referral-card h4 {
 
   margin: 8px 0;
@@ -1114,7 +1147,6 @@ nav a:hover {
   color: #2c3e50;
 
 }
-
 
 .referral-card p {
 
@@ -1124,11 +1156,9 @@ nav a:hover {
 
   color: #1a73e8;
 
-  margin:
-    10px 0 2px;
+  margin: 10px 0 2px;
 
 }
-
 
 .referral-card span {
 
@@ -1147,20 +1177,17 @@ nav a:hover {
 
 }
 
-
 .status.active {
 
   color: #27ae60;
 
 }
 
-
 .status.pending {
 
   color: #f39c12;
 
 }
-
 
 .status.rejected {
 
@@ -1175,12 +1202,25 @@ nav a:hover {
 
 @media (max-width: 800px) {
 
+  .dashboard-card {
+
+    width: 92%;
+
+    padding: 20px;
+
+  }
+
+  .logo-container h1 {
+
+    font-size: 1.3rem;
+
+  }
+
   .referral-grid {
 
     grid-template-columns: 1fr;
 
   }
-
 
   .actions {
 
@@ -1188,10 +1228,18 @@ nav a:hover {
 
   }
 
-
   .btn {
 
     text-align: center;
+
+  }
+
+  .dashboard-table th,
+  .dashboard-table td {
+
+    padding: 9px;
+
+    font-size: 0.85rem;
 
   }
 

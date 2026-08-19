@@ -21,6 +21,13 @@ const PORT = process.env.PORT || 8080;
 
 
 // ========================================================
+// TRUST PROXY
+// ========================================================
+
+app.set("trust proxy", 1);
+
+
+// ========================================================
 // EJS
 // ========================================================
 
@@ -228,9 +235,7 @@ const plans = [
 // Level 2 = 5%
 // Level 3 = 2%
 //
-// IMPORTANT:
-// These percentages are calculated against the
-// DEPOSIT AMOUNT of the referred user.
+// Calculated against the deposit amount.
 //
 
 function getReferralPercent(level) {
@@ -320,8 +325,6 @@ function getPlanById(planId) {
 // BUILD REFERRAL CHAIN
 // ========================================================
 //
-// Example:
-//
 // A refers B
 // B refers C
 // C refers D
@@ -331,9 +334,6 @@ function getPlanById(planId) {
 // C = Level 1
 // B = Level 2
 // A = Level 3
-//
-// This function walks upward through the actual
-// Level 1 referral relationships.
 //
 
 async function createReferralChain(
@@ -358,7 +358,6 @@ async function createReferralChain(
     }
 
 
-    // Prevent self-referral
     if (
       Number(currentReferrerId) ===
       Number(newUserId)
@@ -369,8 +368,6 @@ async function createReferralChain(
     }
 
 
-    // Check whether this exact
-    // referral relationship already exists
     const [existing] =
       await pool.query(
         `
@@ -420,13 +417,6 @@ async function createReferralChain(
     }
 
 
-    // Find the next person above the
-    // current referrer.
-    //
-    // We specifically look for their Level 1
-    // relationship because that represents
-    // who directly referred them.
-
     const [[upline]] =
       await pool.query(
         `
@@ -464,22 +454,6 @@ async function createReferralChain(
 // ========================================================
 // PAY REFERRAL COMMISSIONS
 // ========================================================
-//
-// Paid ONCE when a deposit becomes Active.
-//
-// The calculation is:
-//
-// deposit amount × level percentage
-//
-// Example:
-// R5,000 deposit:
-//
-// Level 1 = R500
-// Level 2 = R250
-// Level 3 = R100
-//
-// No additional matching bonus.
-//
 
 async function payReferralCommissions(
   deposit
@@ -577,32 +551,6 @@ async function payReferralCommissions(
 // ========================================================
 // ACTIVATE DEPOSIT
 // ========================================================
-//
-// IMPORTANT BEHAVIOR:
-//
-// When admin approves:
-//
-// 1. Deposit becomes Active.
-// 2. Original investment amount is NOT added
-//    to user balance.
-// 3. The plan's daily gain is immediately awarded.
-// 4. total_earned starts with that daily gain.
-// 5. last_updated becomes NOW().
-// 6. Referral commissions are paid once.
-//
-// Example:
-//
-// Bronze = R12/day
-//
-// User invests R300.
-//
-// Upon activation:
-// Balance gets +R12
-// Investment amount R300 is NOT added.
-//
-// At the next calendar day:
-// Another R12 is added.
-//
 
 async function activateDeposit(
   depositId
@@ -646,7 +594,6 @@ async function activateDeposit(
       rows[0];
 
 
-    // Already active
     if (
       String(dep.status)
         .toLowerCase() ===
@@ -706,12 +653,6 @@ async function activateDeposit(
     // ====================================================
     // ACTIVATE DEPOSIT
     // ====================================================
-    //
-    // The original deposit amount remains the
-    // investment amount.
-    //
-    // Only the daily gain is credited.
-    //
 
     await connection.query(
       `
@@ -757,11 +698,6 @@ async function activateDeposit(
     // ====================================================
     // REFERRAL COMMISSIONS
     // ====================================================
-    //
-    // Use the original deposit amount.
-    //
-    // NOT the daily gain.
-    //
 
     const [referrals] =
       await connection.query(
@@ -1383,8 +1319,18 @@ app.get(
         );
 
 
+      // ==================================================
+      // DEPLOYMENT-AWARE REFERRAL LINK
+      // ==================================================
+
+      const baseUrl =
+        process.env.APP_URL
+          ? process.env.APP_URL.replace(/\/+$/, "")
+          : `${req.protocol}://${req.get("host")}`;
+
+
       user.referral_link =
-        `${process.env.APP_URL}/register?ref=${user.referral_code}`;
+        `${baseUrl}/register?ref=${encodeURIComponent(user.referral_code)}`;
 
 
       // ==================================================
@@ -1410,9 +1356,6 @@ app.get(
           [userId]
         );
 
-
-      // Use the static plans if the DB plans table
-      // does not contain the name.
 
       deposits.forEach(
         deposit => {
@@ -1499,8 +1442,6 @@ app.get(
           [userId]
         );
 
-
-      // Calculate fee and net amount for display.
 
       withdrawals.forEach(
         withdrawal => {
@@ -1683,8 +1624,6 @@ app.get(
           `
         );
 
-
-      // Add fee/net values for admin display.
 
       withdrawals.forEach(
         withdrawal => {
@@ -1967,19 +1906,6 @@ app.post(
       // ==================================================
       // APPROVE
       // ==================================================
-      //
-      // The requested amount was already reserved
-      // from the user's balance when the withdrawal
-      // was created.
-      //
-      // On approval:
-      //
-      // Requested: R5,000
-      // Fee: R500
-      // Net: R4,500
-      //
-      // No money is returned to the user.
-      //
 
       if (
         action ===
@@ -2008,10 +1934,6 @@ app.post(
       // ==================================================
       // REJECT
       // ==================================================
-      //
-      // Return the FULL requested amount because it
-      // was reserved from the balance.
-      //
 
       else {
 
@@ -2126,11 +2048,46 @@ app.get(
 // ========================================================
 // DEPOSIT
 // ========================================================
+//
+// PACKAGE RULE:
+//
+// Each user may purchase each package only once while
+// that package has a Pending or Active deposit.
+//
+// Pending = blocked
+// Active  = blocked
+// Rejected = allowed again
+//
+// The check is TRANSACTION-SAFE.
+//
+// We lock the user's database row first.
+// This serializes deposit requests for that user.
+//
+// Example:
+//
+// Request A locks user 15
+// Request B tries to lock user 15
+// Request B waits
+//
+// Request A checks package + inserts deposit
+// Request A commits
+//
+// Request B then continues, checks again,
+// sees the package already exists, and rejects it.
+//
 
 app.post(
   "/deposit",
   ensureAuth,
   async (req, res) => {
+
+    const connection =
+      await pool.getConnection();
+
+
+    let transactionStarted =
+      false;
+
 
     try {
 
@@ -2143,8 +2100,14 @@ app.post(
 
 
       const userId =
-        req.session.user.id;
+        Number(
+          req.session.user.id
+        );
 
+
+      // ==================================================
+      // REQUIRED FIELDS
+      // ==================================================
 
       if (
         !plan_id ||
@@ -2170,6 +2133,10 @@ app.post(
       }
 
 
+      // ==================================================
+      // GET PLAN
+      // ==================================================
+
       const selectedPlan =
         getPlanById(
           plan_id
@@ -2194,6 +2161,10 @@ app.post(
 
       }
 
+
+      // ==================================================
+      // VALIDATE AMOUNT
+      // ==================================================
 
       const depositAmount =
         Number(amount);
@@ -2225,10 +2196,133 @@ app.post(
 
 
       // ==================================================
+      // START TRANSACTION
+      // ==================================================
+
+      await connection.beginTransaction();
+
+      transactionStarted = true;
+
+
+      // ==================================================
+      // LOCK USER ROW
+      // ==================================================
+      //
+      // This is the important part.
+      //
+      // Any other deposit request for the same user
+      // must wait until this transaction completes.
+      //
+
+      const [lockedUserRows] =
+        await connection.query(
+          `
+          SELECT id
+          FROM users
+          WHERE id = ?
+          FOR UPDATE
+          `,
+          [userId]
+        );
+
+
+      if (
+        !lockedUserRows.length
+      ) {
+
+        await connection.rollback();
+
+        transactionStarted = false;
+
+        return res.render(
+          "deposit",
+          {
+            user:
+              req.session.user,
+
+            plans,
+
+            error:
+              "User account not found"
+
+          }
+        );
+
+      }
+
+
+      // ==================================================
+      // CHECK EXISTING PACKAGE
+      // ==================================================
+      //
+      // IMPORTANT:
+      //
+      // This query happens AFTER the user row is locked.
+      //
+      // Because every deposit request for this user must
+      // first acquire the same user lock, two simultaneous
+      // requests cannot both pass this check.
+      //
+
+      const [existingPackage] =
+        await connection.query(
+          `
+          SELECT
+            id,
+            status
+
+          FROM deposits
+
+          WHERE user_id = ?
+
+          AND plan_id = ?
+
+          AND status IN ('Pending', 'Active')
+
+          LIMIT 1
+          `,
+          [
+            userId,
+            plan_id
+          ]
+        );
+
+
+      if (
+        existingPackage.length
+      ) {
+
+        const existingStatus =
+          existingPackage[0].status;
+
+
+        await connection.rollback();
+
+        transactionStarted = false;
+
+
+        return res.render(
+          "deposit",
+          {
+            user:
+              req.session.user,
+
+            plans,
+
+            error:
+              `You have already purchased the ${selectedPlan.name} package. Your existing purchase is currently ${existingStatus}. Each package can only be purchased once.`
+
+          }
+        );
+
+      }
+
+
+      // ==================================================
       // CREATE PENDING DEPOSIT
       // ==================================================
 
-      await pool.query(
+      await connection.query(
         `
         INSERT INTO deposits
         (
@@ -2269,6 +2363,20 @@ app.post(
       );
 
 
+      // ==================================================
+      // COMMIT
+      // ==================================================
+
+      await connection.commit();
+
+      transactionStarted = false;
+
+
+      console.log(
+        `✅ User ${userId} submitted ${selectedPlan.name} package purchase for R${depositAmount.toFixed(2)}`
+      );
+
+
       res.redirect(
         "/dashboard"
       );
@@ -2276,8 +2384,26 @@ app.post(
 
     } catch (err) {
 
+      if (transactionStarted) {
+
+        try {
+
+          await connection.rollback();
+
+        } catch (rollbackError) {
+
+          console.error(
+            "Deposit rollback error:",
+            rollbackError
+          );
+
+        }
+
+      }
+
+
       console.error(
-        "Deposit error:",
+        "❌ Deposit error:",
         err
       );
 
@@ -2291,10 +2417,15 @@ app.post(
           plans,
 
           error:
-            "Server error"
+            "Unable to process deposit"
 
         }
       );
+
+
+    } finally {
+
+      connection.release();
 
     }
 
@@ -2415,21 +2546,6 @@ app.get(
 // ========================================================
 // WITHDRAW
 // ========================================================
-//
-// Withdrawal fee:
-//
-// 10%
-//
-// Example:
-//
-// Requested = R5,000
-// Fee       = R500
-// Net       = R4,500
-//
-// The full R5,000 is reserved from the balance.
-// If approved, R500 is retained as the fee.
-// If rejected, the full R5,000 is returned.
-//
 
 app.post(
   "/withdraw",
@@ -2438,6 +2554,10 @@ app.post(
 
     const connection =
       await pool.getConnection();
+
+
+    let transactionStarted =
+      false;
 
 
     try {
@@ -2460,8 +2580,6 @@ app.post(
         !amount ||
         !wallet
       ) {
-
-        await connection.rollback();
 
         return res.render(
           "withdraw",
@@ -2568,6 +2686,8 @@ app.post(
 
       await connection.beginTransaction();
 
+      transactionStarted = true;
+
 
       // ==================================================
       // LOCK USER
@@ -2591,6 +2711,8 @@ app.post(
       if (!userRows.length) {
 
         await connection.rollback();
+
+        transactionStarted = false;
 
         return res.render(
           "withdraw",
@@ -2667,6 +2789,8 @@ app.post(
       ) {
 
         await connection.rollback();
+
+        transactionStarted = false;
 
         return res.render(
           "withdraw",
@@ -2747,6 +2871,8 @@ app.post(
 
       await connection.commit();
 
+      transactionStarted = false;
+
 
       req.session.user.balance =
         currentBalance -
@@ -2765,16 +2891,20 @@ app.post(
 
     } catch (err) {
 
-      try {
+      if (transactionStarted) {
 
-        await connection.rollback();
+        try {
 
-      } catch (rollbackError) {
+          await connection.rollback();
 
-        console.error(
-          "Rollback error:",
-          rollbackError
-        );
+        } catch (rollbackError) {
+
+          console.error(
+            "Rollback error:",
+            rollbackError
+          );
+
+        }
 
       }
 
@@ -2816,29 +2946,10 @@ app.post(
 // DAILY GAINS
 // ========================================================
 //
-// Runs every minute so the application does not need
-// to remain running exactly at midnight.
+// Runs every minute.
 //
-// The actual payout happens only when the calendar date
-// has changed since last_updated.
+// Only pays when the calendar date changes.
 //
-// IMPORTANT:
-//
-// Activation:
-//
-// Bronze R12/day
-//
-// Immediately:
-// +R12
-//
-// last_updated = activation time
-//
-// At midnight / first cron run after midnight:
-// +R12
-//
-// The investment amount is NEVER added to balance.
-//
-// ========================================================
 
 cron.schedule(
   "* * * * *",
@@ -2909,15 +3020,10 @@ cron.schedule(
 
 
         // ==================================================
-        // CHECK WHETHER A NEW CALENDAR DAY HAS STARTED
+        // FIRST-TIME SAFETY
         // ==================================================
 
         if (!dep.last_updated) {
-
-          // Safety fallback.
-          //
-          // Do NOT pay here because activation should
-          // already have awarded the initial gain.
 
           await pool.query(
             `
@@ -2935,6 +3041,10 @@ cron.schedule(
 
         }
 
+
+        // ==================================================
+        // CHECK CALENDAR DATE
+        // ==================================================
 
         const [dateRows] =
           await pool.query(
@@ -2959,7 +3069,6 @@ cron.schedule(
             ?.current_date;
 
 
-        // Same calendar day = no payout.
         if (
           String(lastDate) ===
           String(currentDate)
@@ -2971,7 +3080,7 @@ cron.schedule(
 
 
         // ==================================================
-        // PAY ONE DAILY GAIN
+        // TRANSACTION
         // ==================================================
 
         const connection =
@@ -2983,8 +3092,9 @@ cron.schedule(
           await connection.beginTransaction();
 
 
-          // Lock deposit again to avoid duplicate
-          // payout if multiple cron executions overlap.
+          // ==================================================
+          // LOCK DEPOSIT
+          // ==================================================
 
           const [lockedRows] =
             await connection.query(
@@ -3011,8 +3121,6 @@ cron.schedule(
 
             await connection.rollback();
 
-            connection.release();
-
             continue;
 
           }
@@ -3023,20 +3131,22 @@ cron.schedule(
 
 
           if (
-            lockedDeposit.status !==
-            "Active"
+            String(
+              lockedDeposit.status
+            ).toLowerCase() !==
+            "active"
           ) {
 
             await connection.rollback();
-
-            connection.release();
 
             continue;
 
           }
 
 
-          // Check again after locking.
+          // ==================================================
+          // CHECK AGAIN AFTER LOCK
+          // ==================================================
 
           const [checkRows] =
             await connection.query(
@@ -3061,8 +3171,6 @@ cron.schedule(
           ) {
 
             await connection.rollback();
-
-            connection.release();
 
             continue;
 

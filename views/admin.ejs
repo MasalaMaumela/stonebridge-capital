@@ -1,88 +1,221 @@
 <header>
+
   <div class="logo-container">
-    <h1>Stonebridge Capital</h1>
+
+    <h1>
+      Stonebridge Capital
+    </h1>
+
   </div>
 
+
   <nav>
-    <a href="/admin">Admin Dashboard</a>
-    <a href="/logout">Logout</a>
+
+    <a href="/admin">
+      Admin Dashboard
+    </a>
+
+    <a href="/logout">
+      Logout
+    </a>
+
   </nav>
+
 </header>
+
 
 <div class="dashboard-card">
 
-  <h2>Admin Dashboard</h2>
+  <h2>
+    Admin Dashboard
+  </h2>
 
-  <!-- SUCCESS / ERROR ALERTS -->
 
-  <% if (typeof success !== 'undefined' && success) { %>
+  <!-- =========================
+       SUCCESS / ERROR ALERTS
+  ========================= -->
+
+  <% if (
+    typeof success !== 'undefined' &&
+    success
+  ) { %>
+
     <div class="alert success">
       <%= success %>
     </div>
+
   <% } %>
 
-  <% if (typeof error !== 'undefined' && error) { %>
+
+  <% if (
+    typeof error !== 'undefined' &&
+    error
+  ) { %>
+
     <div class="alert error">
       <%= error %>
     </div>
+
   <% } %>
 
 
-  <!-- KPI CARDS -->
+  <!-- =========================
+       KPI CARDS
+  ========================= -->
 
   <div class="kpi-cards">
 
     <div class="kpi-card users-card">
-      <h4>Total Users</h4>
+
+      <h4>
+        Total Users
+      </h4>
+
       <p>
         <%= (users || []).length %>
       </p>
+
     </div>
 
 
     <div class="kpi-card deposits-card">
-      <h4>Total Deposits (ZAR)</h4>
+
+      <h4>
+        Total Deposits (ZAR)
+      </h4>
+
       <p>
+
         R<%= (deposits || [])
-          .reduce((sum, d) => sum + parseFloat(d.amount || 0), 0)
+          .reduce(
+            (sum, d) =>
+              sum +
+              parseFloat(
+                d.amount || 0
+              ),
+            0
+          )
           .toFixed(2) %>
+
       </p>
+
     </div>
 
 
     <div class="kpi-card withdrawals-card">
-      <h4>Total Withdrawals (ZAR)</h4>
+
+      <h4>
+        Total Withdrawals (ZAR)
+      </h4>
+
       <p>
+
         R<%= (withdrawals || [])
-          .reduce((sum, w) => sum + parseFloat(w.amount || 0), 0)
+          .reduce(
+            (sum, w) =>
+              sum +
+              parseFloat(
+                w.amount || 0
+              ),
+            0
+          )
           .toFixed(2) %>
+
       </p>
+
     </div>
 
 
     <div class="kpi-card referrals-card">
-      <h4>Total Referral Bonus (ZAR)</h4>
+
+      <h4>
+        Total Referral Bonus (ZAR)
+      </h4>
+
       <p>
+
         R<%= (referrals || [])
-          .reduce((sum, r) => sum + parseFloat(r.bonus_earned || 0), 0)
+          .reduce(
+            (sum, r) =>
+              sum +
+              parseFloat(
+                r.bonus_earned || 0
+              ),
+            0
+          )
           .toFixed(2) %>
+
       </p>
+
     </div>
 
   </div>
 
 
-  <!-- USERS -->
+  <!-- =========================
+       USERS
+  ========================= -->
 
   <div class="dashboard-subcard users">
 
-    <h3>👥 All Users</h3>
+    <h3>
+      👥 All Users
+    </h3>
+
+
+    <!-- =========================
+         SEARCH BY EMAIL
+    ========================= -->
+
+    <form
+      method="GET"
+      action="/admin"
+      class="user-search"
+    >
+
+      <input
+        type="email"
+        name="email"
+        placeholder="Search user by email..."
+        value="<%= typeof searchEmail !== 'undefined' ? searchEmail : '' %>"
+      >
+
+
+      <button
+        type="submit"
+        class="action-btn search-btn"
+      >
+        🔍 Search
+      </button>
+
+
+      <% if (
+        typeof searchEmail !== 'undefined' &&
+        searchEmail
+      ) { %>
+
+        <a
+          href="/admin"
+          class="clear-search"
+        >
+          Clear
+        </a>
+
+      <% } %>
+
+    </form>
+
 
     <% const safeUsers = users || []; %>
 
-    <% if (safeUsers.length === 0) { %>
 
-      <p>No users found.</p>
+    <% if (
+      safeUsers.length === 0
+    ) { %>
+
+      <p>
+        No users found.
+      </p>
 
     <% } else { %>
 
@@ -91,18 +224,43 @@
         <table class="dashboard-table">
 
           <thead>
+
             <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Wallet</th>
-              <th>Balance (ZAR)</th>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                Name
+              </th>
+
+              <th>
+                Email
+              </th>
+
+              <th>
+                Wallet
+              </th>
+
+              <th>
+                Balance (ZAR)
+              </th>
+
+              <th>
+                Password Reset
+              </th>
+
             </tr>
+
           </thead>
+
 
           <tbody>
 
-            <% safeUsers.forEach(u => { %>
+            <% safeUsers.forEach(
+              u => {
+            %>
 
               <tr>
 
@@ -110,20 +268,55 @@
                   <%= u.id %>
                 </td>
 
+
                 <td>
                   <%= u.name || "N/A" %>
                 </td>
+
 
                 <td>
                   <%= u.email %>
                 </td>
 
+
                 <td>
                   <%= u.wallet_address || "Not set" %>
                 </td>
 
+
                 <td>
-                  R<%= parseFloat(u.balance || 0).toFixed(2) %>
+                  R<%= parseFloat(
+                    u.balance || 0
+                  ).toFixed(2) %>
+                </td>
+
+
+                <td>
+
+                  <form
+                    method="POST"
+                    action="/admin/user/<%= u.id %>/reset-password"
+                    class="reset-password-form"
+                  >
+
+                    <input
+                      type="password"
+                      name="new_password"
+                      placeholder="New password"
+                      minlength="6"
+                      required
+                    >
+
+
+                    <button
+                      type="submit"
+                      class="action-btn reset"
+                    >
+                      Reset
+                    </button>
+
+                  </form>
+
                 </td>
 
               </tr>
@@ -141,17 +334,28 @@
   </div>
 
 
-  <!-- DEPOSITS -->
+  <!-- =========================
+       DEPOSITS
+  ========================= -->
 
   <div class="dashboard-subcard deposits">
 
-    <h3>💰 All Deposits & Gains</h3>
+    <h3>
+      💰 All Deposits & Gains
+    </h3>
 
-    <% const safeDeposits = deposits || []; %>
 
-    <% if (safeDeposits.length === 0) { %>
+    <% const safeDeposits =
+      deposits || []; %>
 
-      <p>No deposits found.</p>
+
+    <% if (
+      safeDeposits.length === 0
+    ) { %>
+
+      <p>
+        No deposits found.
+      </p>
 
     <% } else { %>
 
@@ -162,23 +366,57 @@
           <thead>
 
             <tr>
-              <th>ID</th>
-              <th>User</th>
-              <th>Email</th>
-              <th>Plan</th>
-              <th>Amount (ZAR)</th>
-              <th>Daily Gain (ZAR)</th>
-              <th>Total Earned (ZAR)</th>
-              <th>TXID</th>
-              <th>Status</th>
-              <th>Action</th>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                User
+              </th>
+
+              <th>
+                Email
+              </th>
+
+              <th>
+                Plan
+              </th>
+
+              <th>
+                Amount (ZAR)
+              </th>
+
+              <th>
+                Daily Gain (ZAR)
+              </th>
+
+              <th>
+                Total Earned (ZAR)
+              </th>
+
+              <th>
+                TXID
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Action
+              </th>
+
             </tr>
 
           </thead>
 
+
           <tbody>
 
-            <% safeDeposits.forEach(d => { %>
+            <% safeDeposits.forEach(
+              d => {
+            %>
 
               <tr>
 
@@ -186,43 +424,61 @@
                   <%= d.id %>
                 </td>
 
+
                 <td>
                   <%= d.user_name || "N/A" %>
                 </td>
+
 
                 <td>
                   <%= d.user_email || "N/A" %>
                 </td>
 
+
                 <td>
                   <%= d.plan_name || "N/A" %>
                 </td>
 
-                <td>
-                  R<%= parseFloat(d.amount || 0).toFixed(2) %>
-                </td>
 
                 <td>
-                  R<%= parseFloat(d.daily_gain || 0).toFixed(2) %>
+                  R<%= parseFloat(
+                    d.amount || 0
+                  ).toFixed(2) %>
                 </td>
 
+
                 <td>
-                  R<%= parseFloat(d.total_earned || 0).toFixed(2) %>
+                  R<%= parseFloat(
+                    d.daily_gain || 0
+                  ).toFixed(2) %>
                 </td>
+
+
+                <td>
+                  R<%= parseFloat(
+                    d.total_earned || 0
+                  ).toFixed(2) %>
+                </td>
+
 
                 <td>
                   <%= d.txid || "N/A" %>
                 </td>
 
+
                 <td>
 
-                  <% if (d.status === "Active") { %>
+                  <% if (
+                    d.status === "Active"
+                  ) { %>
 
                     <span class="status active">
                       ✅ Active
                     </span>
 
-                  <% } else if (d.status === "Pending") { %>
+                  <% } else if (
+                    d.status === "Pending"
+                  ) { %>
 
                     <span class="status pending">
                       ⏳ Pending
@@ -238,9 +494,12 @@
 
                 </td>
 
+
                 <td>
 
-                  <% if (d.status === "Pending") { %>
+                  <% if (
+                    d.status === "Pending"
+                  ) { %>
 
                     <form
                       method="POST"
@@ -298,17 +557,28 @@
   </div>
 
 
-  <!-- WITHDRAWALS -->
+  <!-- =========================
+       WITHDRAWALS
+  ========================= -->
 
   <div class="dashboard-subcard withdrawals">
 
-    <h3>💸 All Withdrawals</h3>
+    <h3>
+      💸 All Withdrawals
+    </h3>
 
-    <% const safeWithdrawals = withdrawals || []; %>
 
-    <% if (safeWithdrawals.length === 0) { %>
+    <% const safeWithdrawals =
+      withdrawals || []; %>
 
-      <p>No withdrawals found.</p>
+
+    <% if (
+      safeWithdrawals.length === 0
+    ) { %>
+
+      <p>
+        No withdrawals found.
+      </p>
 
     <% } else { %>
 
@@ -319,20 +589,45 @@
           <thead>
 
             <tr>
-              <th>ID</th>
-              <th>User</th>
-              <th>Email</th>
-              <th>Amount (ZAR)</th>
-              <th>Wallet</th>
-              <th>Status</th>
-              <th>Action</th>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                User
+              </th>
+
+              <th>
+                Email
+              </th>
+
+              <th>
+                Amount (ZAR)
+              </th>
+
+              <th>
+                Wallet
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Action
+              </th>
+
             </tr>
 
           </thead>
 
+
           <tbody>
 
-            <% safeWithdrawals.forEach(w => { %>
+            <% safeWithdrawals.forEach(
+              w => {
+            %>
 
               <tr>
 
@@ -340,31 +635,42 @@
                   <%= w.id %>
                 </td>
 
+
                 <td>
                   <%= w.user_name || "N/A" %>
                 </td>
+
 
                 <td>
                   <%= w.user_email || "N/A" %>
                 </td>
 
+
                 <td>
-                  R<%= parseFloat(w.amount || 0).toFixed(2) %>
+                  R<%= parseFloat(
+                    w.amount || 0
+                  ).toFixed(2) %>
                 </td>
+
 
                 <td>
                   <%= w.wallet || "N/A" %>
                 </td>
 
+
                 <td>
 
-                  <% if (w.status === "Approved") { %>
+                  <% if (
+                    w.status === "Approved"
+                  ) { %>
 
                     <span class="status active">
                       ✅ Approved
                     </span>
 
-                  <% } else if (w.status === "Pending") { %>
+                  <% } else if (
+                    w.status === "Pending"
+                  ) { %>
 
                     <span class="status pending">
                       ⏳ Pending
@@ -380,9 +686,12 @@
 
                 </td>
 
+
                 <td>
 
-                  <% if (w.status === "Pending") { %>
+                  <% if (
+                    w.status === "Pending"
+                  ) { %>
 
                     <form
                       method="POST"
@@ -449,35 +758,58 @@
 ========================= */
 
 header {
+
   width: 100%;
+
   padding: 18px 35px;
+
   display: flex;
+
   justify-content: space-between;
+
   align-items: center;
+
   background: #ffffff;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+
+  box-shadow:
+    0 3px 12px rgba(0,0,0,0.08);
+
 }
 
 .logo-container {
+
   display: flex;
+
   align-items: center;
+
 }
 
 .logo-container h1 {
+
   font-size: 2rem;
+
   color: #1a73e8;
+
   font-weight: 700;
+
 }
 
 nav a {
+
   margin-left: 20px;
+
   color: #1a73e8;
+
   text-decoration: none;
+
   font-weight: 600;
+
 }
 
 nav a:hover {
+
   color: #1258b0;
+
 }
 
 
@@ -486,22 +818,35 @@ nav a:hover {
 ========================= */
 
 .alert {
+
   padding: 12px 18px;
+
   border-radius: 8px;
+
   margin-bottom: 20px;
+
   font-weight: 600;
+
   text-align: center;
+
   width: 100%;
+
 }
 
 .alert.success {
+
   background-color: #d4edda;
+
   color: #155724;
+
 }
 
 .alert.error {
+
   background-color: #f8d7da;
+
   color: #721c24;
+
 }
 
 
@@ -510,21 +855,36 @@ nav a:hover {
 ========================= */
 
 .dashboard-card {
+
   width: 95%;
+
   max-width: 1500px;
+
   margin: 30px auto;
+
   padding: 30px;
+
   background: #fff;
+
   border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.08);
+
   font-family: Arial, sans-serif;
+
 }
 
 .dashboard-card h2 {
+
   color: #2c3e50;
+
   text-align: center;
+
   font-size: 2.6rem;
+
   margin-bottom: 35px;
+
 }
 
 
@@ -533,34 +893,54 @@ nav a:hover {
 ========================= */
 
 .kpi-cards {
+
   display: flex;
+
   flex-wrap: wrap;
+
   justify-content: space-between;
+
   margin-bottom: 30px;
+
   gap: 15px;
+
 }
 
 .kpi-card {
+
   flex: 1 1 22%;
-  background: linear-gradient(
-    135deg,
-    #1a73e8,
-    #4facfe
-  );
+
+  background:
+    linear-gradient(
+      135deg,
+      #1a73e8,
+      #4facfe
+    );
+
   color: #fff;
+
   padding: 20px;
+
   border-radius: 12px;
+
   text-align: center;
+
 }
 
 .kpi-card h4 {
+
   font-size: 1rem;
+
   margin-bottom: 10px;
+
 }
 
 .kpi-card p {
+
   font-size: 1.8rem;
+
   font-weight: bold;
+
 }
 
 
@@ -569,24 +949,137 @@ nav a:hover {
 ========================= */
 
 .dashboard-subcard {
+
   background: #f9f9f9;
+
   border-radius: 14px;
+
   padding: 20px;
+
   margin-bottom: 30px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.06);
+
 }
 
 .dashboard-subcard h3 {
+
   color: #fff;
+
   font-size: 1.4rem;
+
   margin-bottom: 15px;
+
   padding: 10px 15px;
+
   border-radius: 8px;
-  background: linear-gradient(
-    120deg,
-    #1a73e8,
-    #4facfe
-  );
+
+  background:
+    linear-gradient(
+      120deg,
+      #1a73e8,
+      #4facfe
+    );
+
+}
+
+
+/* =========================
+   USER SEARCH
+========================= */
+
+.user-search {
+
+  display: flex;
+
+  gap: 10px;
+
+  margin-bottom: 20px;
+
+  align-items: center;
+
+  flex-wrap: wrap;
+
+}
+
+.user-search input {
+
+  flex: 1;
+
+  min-width: 250px;
+
+  padding: 10px 12px;
+
+  border:
+    1px solid #ddd;
+
+  border-radius: 8px;
+
+  box-sizing: border-box;
+
+  font-size: 14px;
+
+}
+
+.search-btn {
+
+  background: #1a73e8;
+
+}
+
+.clear-search {
+
+  padding: 8px 14px;
+
+  background: #777;
+
+  color: #fff;
+
+  text-decoration: none;
+
+  border-radius: 8px;
+
+  font-weight: 600;
+
+}
+
+
+/* =========================
+   PASSWORD RESET
+========================= */
+
+.reset-password-form {
+
+  display: flex;
+
+  gap: 5px;
+
+  justify-content: center;
+
+  align-items: center;
+
+}
+
+.reset-password-form input {
+
+  width: 130px;
+
+  padding: 7px;
+
+  border:
+    1px solid #ddd;
+
+  border-radius: 6px;
+
+  box-sizing: border-box;
+
+}
+
+.action-btn.reset {
+
+  background: #8e44ad;
+
 }
 
 
@@ -595,34 +1088,53 @@ nav a:hover {
 ========================= */
 
 .table-wrapper {
+
   overflow-x: auto;
+
 }
 
 .dashboard-table {
+
   width: 100%;
+
   border-collapse: collapse;
+
   margin-top: 10px;
+
 }
 
 .dashboard-table th,
 .dashboard-table td {
+
   padding: 12px;
+
   text-align: center;
-  border: 1px solid #ddd;
+
+  border:
+    1px solid #ddd;
+
 }
 
 .dashboard-table th {
+
   background-color: #1a73e8;
+
   color: #fff;
+
   text-transform: uppercase;
+
 }
 
 .dashboard-table tr:nth-child(even) {
+
   background-color: #f9f9f9;
+
 }
 
 .dashboard-table tr:hover {
+
   background-color: #eef4ff;
+
 }
 
 
@@ -631,19 +1143,27 @@ nav a:hover {
 ========================= */
 
 .status {
+
   font-weight: 600;
+
 }
 
 .status.active {
+
   color: #27ae60;
+
 }
 
 .status.pending {
+
   color: #f39c12;
+
 }
 
 .status.rejected {
+
   color: #e74c3c;
+
 }
 
 
@@ -652,21 +1172,33 @@ nav a:hover {
 ========================= */
 
 .action-btn {
+
   border: none;
+
   padding: 6px 12px;
+
   margin: 2px;
+
   border-radius: 8px;
+
   color: #fff;
+
   font-weight: 600;
+
   cursor: pointer;
+
 }
 
 .action-btn.approve {
+
   background: #27ae60;
+
 }
 
 .action-btn.reject {
+
   background: #e74c3c;
+
 }
 
 
@@ -677,7 +1209,56 @@ nav a:hover {
 @media (max-width: 1200px) {
 
   .kpi-cards {
+
     flex-direction: column;
+
+  }
+
+}
+
+
+@media (max-width: 800px) {
+
+  .dashboard-card {
+
+    width: 92%;
+
+    padding: 20px;
+
+  }
+
+  .logo-container h1 {
+
+    font-size: 1.3rem;
+
+  }
+
+  .user-search {
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+  }
+
+  .user-search input {
+
+    width: 100%;
+
+    min-width: 0;
+
+  }
+
+  .reset-password-form {
+
+    flex-direction: column;
+
+  }
+
+  .reset-password-form input {
+
+    width: 100%;
+
   }
 
 }

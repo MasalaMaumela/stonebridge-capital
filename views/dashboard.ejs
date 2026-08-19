@@ -14,8 +14,13 @@
 
   </div>
 
+
   <nav>
-    <a href="/logout">Logout</a>
+
+    <a href="/logout">
+      Logout
+    </a>
+
   </nav>
 
 </header>
@@ -38,34 +43,47 @@
       👤 Welcome, <%= user.username %>
     </h3>
 
+
     <table class="dashboard-table">
 
       <tr>
-        <th>Email</th>
+
+        <th>
+          Email
+        </th>
 
         <td>
           <%= user.email %>
         </td>
+
       </tr>
 
 
       <tr>
-        <th>Wallet</th>
+
+        <th>
+          Wallet
+        </th>
 
         <td>
           <%= user.wallet || "Not set" %>
         </td>
+
       </tr>
 
 
       <tr>
-        <th>Available Balance</th>
+
+        <th>
+          Available Balance
+        </th>
 
         <td>
           R<%= Number(
             user.balance || 0
           ).toFixed(2) %>
         </td>
+
       </tr>
 
     </table>
@@ -113,46 +131,56 @@
 
       <%
         const dashboardPlans = [
+
           {
             name: "Bronze",
             minimum: 300,
             daily: 12
           },
+
           {
             name: "Silver",
             minimum: 900,
             daily: 20
           },
+
           {
             name: "Gold",
             minimum: 1500,
             daily: 40
           },
+
           {
             name: "Platinum",
             minimum: 2500,
             daily: 77
           },
+
           {
             name: "Diamond",
             minimum: 5000,
             daily: 200
           },
+
           {
             name: "Ruby",
             minimum: 8000,
             daily: 300
           },
+
           {
             name: "Emerald",
             minimum: 12000,
             daily: 400
           }
+
         ];
       %>
 
 
-      <% dashboardPlans.forEach(plan => { %>
+      <% dashboardPlans.forEach(
+        plan => {
+      %>
 
         <div class="plan-card">
 
@@ -264,7 +292,9 @@
 
           <tbody>
 
-            <% deposits.forEach(dep => { %>
+            <% deposits.forEach(
+              dep => {
+            %>
 
               <tr>
 
@@ -419,17 +449,13 @@
                 </td>
 
 
-                <!-- 10% FEE -->
+                <!-- 10% FEE ONLY -->
 
                 <td>
 
-                  R<%= Number(
-                    withdrawal.withdrawal_fee || 0
-                  ).toFixed(2) %>
-
-                  <small>
+                  <strong>
                     10%
-                  </small>
+                  </strong>
 
                 </td>
 
@@ -847,7 +873,8 @@ nav a:hover {
 
   text-align: center;
 
-  border: 1px solid #ddd;
+  border:
+    1px solid #ddd;
 
 }
 
@@ -989,7 +1016,8 @@ nav a:hover {
 
   padding: 10px 0;
 
-  border-bottom: 1px solid #eee;
+  border-bottom:
+    1px solid #eee;
 
 }
 
@@ -1041,18 +1069,6 @@ nav a:hover {
 .withdrawals {
 
   margin-bottom: 30px;
-
-}
-
-.withdrawals small {
-
-  display: block;
-
-  margin-top: 4px;
-
-  color: #777;
-
-  font-size: 0.8rem;
 
 }
 

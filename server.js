@@ -228,9 +228,8 @@ const plans = [
 // Level 2 = 5%
 // Level 3 = 2%
 //
-// IMPORTANT:
 // These percentages are calculated against the
-// DEPOSIT AMOUNT of the referred user.
+// deposit amount of the referred user.
 //
 
 function getReferralPercent(level) {
@@ -319,22 +318,6 @@ function getPlanById(planId) {
 // ========================================================
 // BUILD REFERRAL CHAIN
 // ========================================================
-//
-// Example:
-//
-// A refers B
-// B refers C
-// C refers D
-//
-// If D deposits:
-//
-// C = Level 1
-// B = Level 2
-// A = Level 3
-//
-// This function walks upward through the actual
-// Level 1 referral relationships.
-//
 
 async function createReferralChain(
   newUserId,
@@ -358,7 +341,6 @@ async function createReferralChain(
     }
 
 
-    // Prevent self-referral
     if (
       Number(currentReferrerId) ===
       Number(newUserId)
@@ -369,8 +351,6 @@ async function createReferralChain(
     }
 
 
-    // Check whether this exact
-    // referral relationship already exists
     const [existing] =
       await pool.query(
         `
@@ -420,13 +400,6 @@ async function createReferralChain(
     }
 
 
-    // Find the next person above the
-    // current referrer.
-    //
-    // We specifically look for their Level 1
-    // relationship because that represents
-    // who directly referred them.
-
     const [[upline]] =
       await pool.query(
         `
@@ -464,22 +437,6 @@ async function createReferralChain(
 // ========================================================
 // PAY REFERRAL COMMISSIONS
 // ========================================================
-//
-// Paid ONCE when a deposit becomes Active.
-//
-// The calculation is:
-//
-// deposit amount × level percentage
-//
-// Example:
-// R5,000 deposit:
-//
-// Level 1 = R500
-// Level 2 = R250
-// Level 3 = R100
-//
-// No additional matching bonus.
-//
 
 async function payReferralCommissions(
   deposit
@@ -577,32 +534,6 @@ async function payReferralCommissions(
 // ========================================================
 // ACTIVATE DEPOSIT
 // ========================================================
-//
-// IMPORTANT BEHAVIOR:
-//
-// When admin approves:
-//
-// 1. Deposit becomes Active.
-// 2. Original investment amount is NOT added
-//    to user balance.
-// 3. The plan's daily gain is immediately awarded.
-// 4. total_earned starts with that daily gain.
-// 5. last_updated becomes NOW().
-// 6. Referral commissions are paid once.
-//
-// Example:
-//
-// Bronze = R12/day
-//
-// User invests R300.
-//
-// Upon activation:
-// Balance gets +R12
-// Investment amount R300 is NOT added.
-//
-// At the next calendar day:
-// Another R12 is added.
-// ========================================================
 
 async function activateDeposit(
   depositId
@@ -616,10 +547,6 @@ async function activateDeposit(
 
     await connection.beginTransaction();
 
-
-    // ====================================================
-    // LOCK DEPOSIT
-    // ====================================================
 
     const [rows] =
       await connection.query(
@@ -646,7 +573,6 @@ async function activateDeposit(
       rows[0];
 
 
-    // Already active
     if (
       String(dep.status)
         .toLowerCase() ===
@@ -703,10 +629,6 @@ async function activateDeposit(
     }
 
 
-    // ====================================================
-    // ACTIVATE DEPOSIT
-    // ====================================================
-
     await connection.query(
       `
       UPDATE deposits
@@ -728,10 +650,6 @@ async function activateDeposit(
     );
 
 
-    // ====================================================
-    // AWARD IMMEDIATE DAILY GAIN
-    // ====================================================
-
     await connection.query(
       `
       UPDATE users
@@ -747,10 +665,6 @@ async function activateDeposit(
       ]
     );
 
-
-    // ====================================================
-    // REFERRAL COMMISSIONS
-    // ====================================================
 
     const [referrals] =
       await connection.query(
@@ -1015,10 +929,6 @@ app.post(
         await generateReferralCode();
 
 
-      // ==================================================
-      // FIND DIRECT REFERRER
-      // ==================================================
-
       let directReferrerId =
         null;
 
@@ -1048,10 +958,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // CREATE USER
-      // ==================================================
 
       const [result] =
         await pool.query(
@@ -1090,10 +996,6 @@ app.post(
       const newUserId =
         result.insertId;
 
-
-      // ==================================================
-      // BUILD 3-LEVEL REFERRAL CHAIN
-      // ==================================================
 
       if (
         directReferrerId &&
@@ -1330,10 +1232,6 @@ app.get(
         req.session.user.id;
 
 
-      // ==================================================
-      // USER
-      // ==================================================
-
       const [userRows] =
         await pool.query(
           `
@@ -1376,10 +1274,6 @@ app.get(
         `${process.env.APP_URL}/register?ref=${user.referral_code}`;
 
 
-      // ==================================================
-      // INVESTMENTS
-      // ==================================================
-
       const [deposits] =
         await pool.query(
           `
@@ -1421,10 +1315,6 @@ app.get(
       );
 
 
-      // ==================================================
-      // REFERRALS
-      // ==================================================
-
       const [referrals] =
         await pool.query(
           `
@@ -1461,10 +1351,6 @@ app.get(
             Number(r.level) === 3
         );
 
-
-      // ==================================================
-      // WITHDRAWALS
-      // ==================================================
 
       const [withdrawals] =
         await pool.query(
@@ -1518,10 +1404,6 @@ app.get(
       );
 
 
-      // ==================================================
-      // PENDING WITHDRAWALS
-      // ==================================================
-
       const pendingWithdrawals =
         withdrawals.filter(
           withdrawal =>
@@ -1551,10 +1433,6 @@ app.get(
         user.balance -
         pendingWithdrawalTotal;
 
-
-      // ==================================================
-      // RENDER
-      // ==================================================
 
       res.render(
         "dashboard",
@@ -1611,13 +1489,48 @@ app.get(
     try {
 
       // ==================================================
-      // USERS
+      // USER SEARCH BY EMAIL
       // ==================================================
 
-      const [users] =
-        await pool.query(
-          "SELECT * FROM users"
-        );
+      const searchEmail =
+        String(
+          req.query.email || ""
+        ).trim();
+
+
+      let users;
+
+
+      if (searchEmail) {
+
+        [users] =
+          await pool.query(
+            `
+            SELECT *
+            FROM users
+
+            WHERE email LIKE ?
+
+            ORDER BY id DESC
+            `,
+            [
+              `%${searchEmail}%`
+            ]
+          );
+
+      } else {
+
+        [users] =
+          await pool.query(
+            `
+            SELECT *
+            FROM users
+
+            ORDER BY id DESC
+            `
+          );
+
+      }
 
 
       // ==================================================
@@ -1730,7 +1643,9 @@ app.get(
 
           withdrawals,
 
-          referrals
+          referrals,
+
+          searchEmail
 
         }
       );
@@ -1747,6 +1662,148 @@ app.get(
       res.status(500).send(
         "Error loading admin dashboard"
       );
+
+    }
+
+  }
+);
+
+
+// ========================================================
+// ADMIN PASSWORD RESET
+// ========================================================
+
+app.post(
+  "/admin/user/:id/reset-password",
+  ensureAdmin,
+  async (req, res) => {
+
+    try {
+
+      const userId =
+        Number(
+          req.params.id
+        );
+
+
+      const newPassword =
+        String(
+          req.body.new_password || ""
+        ).trim();
+
+
+      if (
+        !Number.isInteger(userId) ||
+        userId <= 0
+      ) {
+
+        return res
+          .status(400)
+          .send(
+            "Invalid user ID"
+          );
+
+      }
+
+
+      if (
+        newPassword.length < 6
+      ) {
+
+        return res
+          .status(400)
+          .send(
+            "Password must be at least 6 characters"
+          );
+
+      }
+
+
+      // ==================================================
+      // CHECK USER
+      // ==================================================
+
+      const [users] =
+        await pool.query(
+          `
+          SELECT
+            id,
+            email
+
+          FROM users
+
+          WHERE id = ?
+
+          LIMIT 1
+          `,
+          [userId]
+        );
+
+
+      if (!users.length) {
+
+        return res
+          .status(404)
+          .send(
+            "User not found"
+          );
+
+      }
+
+
+      // ==================================================
+      // HASH NEW PASSWORD
+      // ==================================================
+
+      const passwordHash =
+        await bcrypt.hash(
+          newPassword,
+          10
+        );
+
+
+      // ==================================================
+      // UPDATE PASSWORD
+      // ==================================================
+
+      await pool.query(
+        `
+        UPDATE users
+
+        SET password = ?
+
+        WHERE id = ?
+        `,
+        [
+          passwordHash,
+          userId
+        ]
+      );
+
+
+      console.log(
+        `🔐 Admin reset password for user ${userId} (${users[0].email})`
+      );
+
+
+      res.redirect(
+        "/admin"
+      );
+
+
+    } catch (err) {
+
+      console.error(
+        "Admin password reset error:",
+        err
+      );
+
+
+      res
+        .status(500)
+        .send(
+          "Unable to reset password"
+        );
 
     }
 
@@ -1877,10 +1934,6 @@ app.post(
       await connection.beginTransaction();
 
 
-      // ==================================================
-      // LOCK WITHDRAWAL
-      // ==================================================
-
       const [withdrawalRows] =
         await connection.query(
           `
@@ -1946,10 +1999,6 @@ app.post(
         fee;
 
 
-      // ==================================================
-      // APPROVE
-      // ==================================================
-
       if (
         action ===
         "approve"
@@ -1973,10 +2022,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // REJECT
-      // ==================================================
 
       else {
 
@@ -2094,11 +2139,6 @@ app.get(
 //
 // A user may purchase each package only once.
 //
-// This is enforced in server.js by checking whether
-// the user already has a deposit for the selected plan.
-//
-// No database UNIQUE constraint is required.
-//
 
 app.post(
   "/deposit",
@@ -2118,10 +2158,6 @@ app.post(
       const userId =
         req.session.user.id;
 
-
-      // ==================================================
-      // REQUIRED FIELDS
-      // ==================================================
 
       if (
         !plan_id ||
@@ -2147,10 +2183,6 @@ app.post(
       }
 
 
-      // ==================================================
-      // GET SELECTED PLAN
-      // ==================================================
-
       const selectedPlan =
         getPlanById(
           plan_id
@@ -2175,10 +2207,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // VALIDATE AMOUNT
-      // ==================================================
 
       const depositAmount =
         Number(amount);
@@ -2212,19 +2240,6 @@ app.post(
       // ==================================================
       // CHECK EXISTING PACKAGE PURCHASE
       // ==================================================
-      //
-      // A user can only purchase a particular package once.
-      //
-      // Different packages are still allowed.
-      //
-      // Example:
-      //
-      // Bronze  -> allowed once
-      // Silver  -> allowed once
-      // Gold    -> allowed once
-      //
-      // Bronze again -> rejected
-      //
 
       const [existingDeposits] =
         await pool.query(
@@ -2262,10 +2277,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // CREATE PENDING DEPOSIT
-      // ==================================================
 
       await pool.query(
         `
@@ -2455,19 +2466,11 @@ app.get(
 // WITHDRAW
 // ========================================================
 //
-// Withdrawal fee:
+// Withdrawal fee = 10%
 //
-// 10%
-//
-// Example:
-//
-// Requested = R5,000
-// Fee       = R500
-// Net       = R4,500
-//
-// The full R5,000 is reserved from the balance.
-// If approved, R500 is retained as the fee.
-// If rejected, the full R5,000 is returned.
+// The full requested amount is reserved.
+// Approved: 10% is retained as fee.
+// Rejected: full requested amount is returned.
 //
 
 app.post(
@@ -2490,10 +2493,6 @@ app.post(
       const userId =
         req.session.user.id;
 
-
-      // ==================================================
-      // REQUIRED FIELDS
-      // ==================================================
 
       if (
         !amount ||
@@ -2518,10 +2517,6 @@ app.post(
 
       }
 
-
-      // ==================================================
-      // VALIDATE AMOUNT
-      // ==================================================
 
       const withdrawalAmount =
         Number(amount);
@@ -2553,10 +2548,6 @@ app.post(
       }
 
 
-      // ==================================================
-      // MINIMUM WITHDRAWAL
-      // ==================================================
-
       const MIN_WITHDRAWAL =
         100;
 
@@ -2585,10 +2576,6 @@ app.post(
       }
 
 
-      // ==================================================
-      // FEE
-      // ==================================================
-
       const withdrawalFee =
         withdrawalAmount *
         0.10;
@@ -2599,16 +2586,8 @@ app.post(
         withdrawalFee;
 
 
-      // ==================================================
-      // START TRANSACTION
-      // ==================================================
-
       await connection.beginTransaction();
 
-
-      // ==================================================
-      // LOCK USER
-      // ==================================================
 
       const [userRows] =
         await connection.query(
@@ -2655,10 +2634,6 @@ app.post(
         );
 
 
-      // ==================================================
-      // PENDING WITHDRAWALS
-      // ==================================================
-
       const [pendingRows] =
         await connection.query(
           `
@@ -2685,18 +2660,10 @@ app.post(
         );
 
 
-      // ==================================================
-      // AVAILABLE BALANCE
-      // ==================================================
-
       const availableBalance =
         currentBalance -
         pendingAmount;
 
-
-      // ==================================================
-      // CHECK BALANCE
-      // ==================================================
 
       if (
         withdrawalAmount >
@@ -2725,10 +2692,6 @@ app.post(
       }
 
 
-      // ==================================================
-      // RESERVE FULL REQUESTED AMOUNT
-      // ==================================================
-
       await connection.query(
         `
         UPDATE users
@@ -2744,10 +2707,6 @@ app.post(
         ]
       );
 
-
-      // ==================================================
-      // CREATE PENDING WITHDRAWAL
-      // ==================================================
 
       await connection.query(
         `
@@ -2777,10 +2736,6 @@ app.post(
         ]
       );
 
-
-      // ==================================================
-      // COMMIT
-      // ==================================================
 
       await connection.commit();
 
@@ -2852,30 +2807,6 @@ app.post(
 // ========================================================
 // DAILY GAINS
 // ========================================================
-//
-// Runs every minute so the application does not need
-// to remain running exactly at midnight.
-//
-// The actual payout happens only when the calendar date
-// has changed since last_updated.
-//
-// IMPORTANT:
-//
-// Activation:
-//
-// Bronze R12/day
-//
-// Immediately:
-// +R12
-//
-// last_updated = activation time
-//
-// At midnight / first cron run after midnight:
-// +R12
-//
-// The investment amount is NEVER added to balance.
-//
-// ========================================================
 
 cron.schedule(
   "* * * * *",
@@ -2945,16 +2876,7 @@ cron.schedule(
         }
 
 
-        // ==================================================
-        // CHECK WHETHER A NEW CALENDAR DAY HAS STARTED
-        // ==================================================
-
         if (!dep.last_updated) {
-
-          // Safety fallback.
-          //
-          // Do NOT pay here because activation should
-          // already have awarded the initial gain.
 
           await pool.query(
             `
@@ -2996,8 +2918,6 @@ cron.schedule(
             ?.today_date;
 
 
-        // Same calendar day = no payout.
-
         if (
           String(lastDate) ===
           String(currentDate)
@@ -3008,10 +2928,6 @@ cron.schedule(
         }
 
 
-        // ==================================================
-        // PAY ONE DAILY GAIN
-        // ==================================================
-
         const connection =
           await pool.getConnection();
 
@@ -3020,9 +2936,6 @@ cron.schedule(
 
           await connection.beginTransaction();
 
-
-          // Lock deposit again to avoid duplicate
-          // payout if multiple cron executions overlap.
 
           const [lockedRows] =
             await connection.query(
@@ -3074,8 +2987,6 @@ cron.schedule(
           }
 
 
-          // Check again after locking.
-
           const [checkRows] =
             await connection.query(
               `
@@ -3107,10 +3018,6 @@ cron.schedule(
           }
 
 
-          // ==================================================
-          // UPDATE DEPOSIT
-          // ==================================================
-
           await connection.query(
             `
             UPDATE deposits
@@ -3135,10 +3042,6 @@ cron.schedule(
             ]
           );
 
-
-          // ==================================================
-          // UPDATE USER BALANCE
-          // ==================================================
 
           await connection.query(
             `

@@ -17,18 +17,14 @@ const cron = require("node-cron");
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 8080;
+const PORT = process.env.PORT || 8080;
 
 
 // ========================================================
 // EJS
 // ========================================================
 
-app.set(
-  "view engine",
-  "ejs"
-);
+app.set("view engine", "ejs");
 
 app.set(
   "views",
@@ -37,9 +33,7 @@ app.set(
 
 app.use(expressLayouts);
 
-app.use(
-  express.static("public")
-);
+app.use(express.static("public"));
 
 
 // ========================================================
@@ -264,35 +258,74 @@ function getMatchPercent(level) {
 // ========================================================
 // ACTIVATE DEPOSIT
 // ========================================================
+//
+// When activated:
+// - Investment starts at zero BEFORE activation.
+// - First daily gain is paid immediately.
+// - Bronze = +R12 immediately.
+// - Silver = +R20 immediately.
+// - Gold = +R40 immediately.
+// - last_updated is set to activation time.
+// - Next gain happens on the next calendar day.
+// ========================================================
 
 async function activateDeposit(
   depositId
 ) {
 
+  const connection =
+    await pool.getConnection();
+
   try {
 
+    await connection.beginTransaction();
+
+    // ==================================================
+    // GET DEPOSIT + PLAN
+    // ==================================================
+
     const [rows] =
-      await pool.query(
+      await connection.query(
         `
-        SELECT *
-        FROM deposits
-        WHERE id = ?
+        SELECT
+          d.*,
+          p.name AS plan_name,
+          p.daily_return
+
+        FROM deposits d
+
+        LEFT JOIN plans p
+          ON d.plan_id = p.id
+
+        WHERE d.id = ?
+
+        FOR UPDATE
         `,
         [depositId]
       );
 
 
     if (!rows.length) {
+
+      await connection.rollback();
+
       return;
+
     }
 
 
     const dep = rows[0];
 
 
+    // ==================================================
+    // PREVENT DOUBLE ACTIVATION
+    // ==================================================
+
     if (
       dep.status === "Active"
     ) {
+
+      await connection.rollback();
 
       console.log(
         `Deposit ${depositId} already active - skipping activation.`
@@ -303,27 +336,105 @@ async function activateDeposit(
     }
 
 
-    await pool.query(
+    // ==================================================
+    // GET PLAN DAILY GAIN
+    // ==================================================
+
+    const dailyGain =
+      Number(
+        dep.daily_return || 0
+      );
+
+
+    if (
+      dailyGain <= 0
+    ) {
+
+      await connection.rollback();
+
+      console.log(
+        `Deposit ${depositId} has no valid daily gain.`
+      );
+
+      return;
+
+    }
+
+
+    const now =
+      new Date();
+
+
+    // ==================================================
+    // ACTIVATE + IMMEDIATE FIRST PAYOUT
+    // ==================================================
+    //
+    // total_earned starts from 0 and immediately receives
+    // the first daily gain.
+    //
+    // daily_gain stores the plan's daily amount.
+    //
+    // last_updated records when the immediate payout
+    // happened so the cron won't pay again until the
+    // next calendar day.
+    // ==================================================
+
+    await connection.query(
       `
       UPDATE deposits
 
       SET
         status = 'Active',
-        last_updated = NOW()
+
+        daily_gain = ?,
+
+        total_earned =
+          IFNULL(total_earned, 0) + ?,
+
+        last_updated = ?
 
       WHERE id = ?
       `,
-      [depositId]
+      [
+        dailyGain,
+        dailyGain,
+        now,
+        depositId
+      ]
+    );
+
+
+    // ==================================================
+    // ADD IMMEDIATE FIRST PAYOUT TO USER BALANCE
+    // ==================================================
+
+    await connection.query(
+      `
+      UPDATE users
+
+      SET balance =
+        balance + ?
+
+      WHERE id = ?
+      `,
+      [
+        dailyGain,
+        dep.user_id
+      ]
     );
 
 
     console.log(
-      `✅ Deposit ${depositId} marked Active.`
+      `💰 Immediate first payout: R${dailyGain.toFixed(2)} -> user ${dep.user_id}`
     );
 
 
+    // ==================================================
+    // REFERRAL BONUSES
+    // ==================================================
+
     const [referrals] =
-      await pool.query(
+      await connection.query(
         `
         SELECT *
         FROM referrals
@@ -348,14 +459,20 @@ async function activateDeposit(
         );
 
 
-      if (refPercent > 0) {
+      // ==================================================
+      // REFERRAL BONUS
+      // ==================================================
+
+      if (
+        refPercent > 0
+      ) {
 
         const refBonus =
           Number(dep.amount) *
           refPercent;
 
 
-        await pool.query(
+        await connection.query(
           `
           UPDATE users
 
@@ -378,14 +495,20 @@ async function activateDeposit(
       }
 
 
-      if (matchPercent > 0) {
+      // ==================================================
+      // MATCH BONUS
+      // ==================================================
+
+      if (
+        matchPercent > 0
+      ) {
 
         const matchBonus =
           Number(dep.amount) *
           matchPercent;
 
 
-        await pool.query(
+        await connection.query(
           `
           UPDATE users
 
@@ -410,12 +533,29 @@ async function activateDeposit(
     }
 
 
+    await connection.commit();
+
+
     console.log(
-      `✅ Deposit ${depositId} activated and bonuses paid.`
+      `✅ Deposit ${depositId} activated successfully.`
     );
 
 
   } catch (err) {
+
+    try {
+
+      await connection.rollback();
+
+    } catch (rollbackError) {
+
+      console.error(
+        "Rollback error:",
+        rollbackError
+      );
+
+    }
+
 
     console.error(
       "activateDeposit error:",
@@ -423,6 +563,11 @@ async function activateDeposit(
     );
 
     throw err;
+
+
+  } finally {
+
+    connection.release();
 
   }
 
@@ -456,7 +601,8 @@ app.get(
       {
         error: null,
         message: null,
-        user: req.session.user
+        user:
+          req.session.user
       }
     );
 
@@ -540,7 +686,9 @@ app.post(
         );
 
 
-      if (exists.length) {
+      if (
+        exists.length
+      ) {
 
         return res.render(
           "register",
@@ -605,6 +753,10 @@ app.post(
       const newUserId =
         result.insertId;
 
+
+      // ==================================================
+      // REFERRAL STRUCTURE
+      // ==================================================
 
       if (referral) {
 
@@ -764,7 +916,8 @@ app.post(
       res.render(
         "register",
         {
-          error: "Server error",
+          error:
+            "Server error",
           message: null,
           referral,
           user:
@@ -807,11 +960,14 @@ app.post(
 
           email,
 
-          username: "Admin",
+          username:
+            "Admin",
 
-          isAdmin: true,
+          isAdmin:
+            true,
 
-          balance: 0
+          balance:
+            0
 
         };
 
@@ -834,7 +990,9 @@ app.post(
         );
 
 
-      if (!rows.length) {
+      if (
+        !rows.length
+      ) {
 
         return res.render(
           "login",
@@ -850,7 +1008,8 @@ app.post(
       }
 
 
-      const user = rows[0];
+      const user =
+        rows[0];
 
 
       const match =
@@ -878,7 +1037,8 @@ app.post(
 
       req.session.user = {
 
-        id: user.id,
+        id:
+          user.id,
 
         username:
           user.name ||
@@ -891,13 +1051,15 @@ app.post(
           user.wallet_address,
 
         balance:
-          Number(user.balance) ||
-          0,
+          Number(
+            user.balance
+          ) || 0,
 
         referral_code:
           user.referral_code,
 
-        isAdmin: false
+        isAdmin:
+          false
 
       };
 
@@ -915,7 +1077,8 @@ app.post(
       res.render(
         "login",
         {
-          error: "Server error",
+          error:
+            "Server error",
           message: null,
           user:
             req.session.user
@@ -962,7 +1125,9 @@ app.get(
         );
 
 
-      if (!userRows.length) {
+      if (
+        !userRows.length
+      ) {
 
         return res.redirect(
           "/login"
@@ -985,6 +1150,10 @@ app.get(
         `${process.env.APP_URL}/register?ref=${user.referral_code}`;
 
 
+      // ==================================================
+      // USER DEPOSITS
+      // ==================================================
+
       const [deposits] =
         await pool.query(
           `
@@ -1005,22 +1174,24 @@ app.get(
         );
 
 
+      // ==================================================
+      // REFERRALS
+      // ==================================================
+
       const [referrals] =
         await pool.query(
           `
           SELECT
-            r.*,
-            u.name AS referred_name,
-            u.email AS referred_email
+            r.*
 
           FROM referrals r
 
-          LEFT JOIN users u
-            ON r.referred_user_id = u.id
-
           WHERE r.referrer_id = ?
 
-          ORDER BY r.side, r.id ASC
+          ORDER BY
+            r.side,
+            r.level,
+            r.id ASC
           `,
           [userId]
         );
@@ -1030,7 +1201,8 @@ app.get(
         referrals.filter(
           r =>
             (r.side || "")
-              .toUpperCase() === "A"
+              .toUpperCase() ===
+            "A"
         );
 
 
@@ -1038,9 +1210,14 @@ app.get(
         referrals.filter(
           r =>
             (r.side || "")
-              .toUpperCase() === "B"
+              .toUpperCase() ===
+            "B"
         );
 
+
+      // ==================================================
+      // RENDER DASHBOARD
+      // ==================================================
 
       res.render(
         "dashboard",
@@ -1048,7 +1225,8 @@ app.get(
           user,
           deposits,
           referralsA,
-          referralsB
+          referralsB,
+          plans
         }
       );
 
@@ -1202,8 +1380,10 @@ app.post(
 
 
       if (
-        !["approve", "reject"]
-          .includes(action)
+        ![
+          "approve",
+          "reject"
+        ].includes(action)
       ) {
 
         return res.status(400).send(
@@ -1279,8 +1459,10 @@ app.post(
 
 
       if (
-        !["approve", "reject"]
-          .includes(action)
+        ![
+          "approve",
+          "reject"
+        ].includes(action)
       ) {
 
         return res.status(400).send(
@@ -1305,7 +1487,9 @@ app.post(
         );
 
 
-      if (!withdrawalRows.length) {
+      if (
+        !withdrawalRows.length
+      ) {
 
         await connection.rollback();
 
@@ -1407,12 +1591,16 @@ app.post(
     } catch (err) {
 
       try {
+
         await connection.rollback();
+
       } catch (rollbackError) {
+
         console.error(
           "Rollback error:",
           rollbackError
         );
+
       }
 
 
@@ -1562,7 +1750,10 @@ app.post(
           wallet,
           txid,
           status,
-          created_at
+          daily_gain,
+          total_earned,
+          created_at,
+          last_updated
         )
 
         VALUES
@@ -1573,7 +1764,10 @@ app.post(
           ?,
           ?,
           ?,
-          NOW()
+          0,
+          0,
+          NOW(),
+          NULL
         )
         `,
         [
@@ -1712,7 +1906,7 @@ app.post(
 
 
       // ==================================================
-      // MINIMUM R100
+      // MINIMUM WITHDRAWAL
       // ==================================================
 
       const MIN_WITHDRAWAL =
@@ -1738,7 +1932,7 @@ app.post(
 
 
       // ==================================================
-      // START TRANSACTION
+      // TRANSACTION
       // ==================================================
 
       await connection.beginTransaction();
@@ -1763,7 +1957,9 @@ app.post(
         );
 
 
-      if (!userRows.length) {
+      if (
+        !userRows.length
+      ) {
 
         await connection.rollback();
 
@@ -1927,12 +2123,16 @@ app.post(
     } catch (err) {
 
       try {
+
         await connection.rollback();
+
       } catch (rollbackError) {
+
         console.error(
           "Rollback error:",
           rollbackError
         );
+
       }
 
 
@@ -1966,13 +2166,33 @@ app.post(
 // ========================================================
 // DAILY GAINS CRON
 // ========================================================
+//
+// Runs every minute.
+//
+// IMPORTANT:
+// Activation pays the first daily gain immediately.
+//
+// Example:
+//
+// Bronze activated:
+// Balance + R12 immediately
+//
+// Next calendar day:
+// Balance + R12
+//
+// Next calendar day:
+// Balance + R12
+//
+// The cron checks the calendar date so it cannot pay
+// multiple times during the same day.
+// ========================================================
 
 cron.schedule(
   "* * * * *",
   async () => {
 
     console.log(
-      "⏳ Running daily gains updater..."
+      "⏳ Checking daily gains..."
     );
 
 
@@ -1982,16 +2202,20 @@ cron.schedule(
         await pool.query(
           `
           SELECT
-            id,
-            user_id,
-            amount,
-            status,
-            plan_id,
-            last_updated
+            d.id,
+            d.user_id,
+            d.status,
+            d.plan_id,
+            d.last_updated,
+            p.daily_return,
+            p.name AS plan_name
 
-          FROM deposits
+          FROM deposits d
 
-          WHERE status = 'Active'
+          LEFT JOIN plans p
+            ON d.plan_id = p.id
+
+          WHERE d.status = 'Active'
           `
         );
 
@@ -2004,65 +2228,172 @@ cron.schedule(
         const dep of deposits
       ) {
 
-        const [plan] =
-          await pool.query(
-            `
-            SELECT daily_return
-
-            FROM plans
-
-            WHERE id = ?
-            `,
-            [dep.plan_id]
-          );
-
-
-        if (!plan.length) {
-          continue;
-        }
-
-
-        const dailyGainZAR =
+        const dailyGain =
           Number(
-            plan[0].daily_return
+            dep.daily_return || 0
           );
-
-
-        const lastUpdated =
-          dep.last_updated
-            ? new Date(
-                dep.last_updated
-              )
-            : null;
-
-
-        const daysPassed =
-          lastUpdated
-            ? Math.floor(
-                (
-                  now -
-                  lastUpdated
-                ) /
-                (
-                  1000 *
-                  60 *
-                  60 *
-                  24
-                )
-              )
-            : 1;
 
 
         if (
-          daysPassed >= 1
+          dailyGain <= 0
         ) {
 
-          const gain =
-            dailyGainZAR *
-            daysPassed;
+          continue;
+
+        }
 
 
-          await pool.query(
+        if (
+          !dep.last_updated
+        ) {
+
+          continue;
+
+        }
+
+
+        const lastUpdated =
+          new Date(
+            dep.last_updated
+          );
+
+
+        // ==================================================
+        // CALENDAR DATE COMPARISON
+        // ==================================================
+
+        const lastDate =
+          lastUpdated
+            .toISOString()
+            .slice(
+              0,
+              10
+            );
+
+
+        const currentDate =
+          now
+            .toISOString()
+            .slice(
+              0,
+              10
+            );
+
+
+        // ==================================================
+        // SAME DAY
+        // ==================================================
+
+        if (
+          lastDate ===
+          currentDate
+        ) {
+
+          continue;
+
+        }
+
+
+        // ==================================================
+        // NEW CALENDAR DAY
+        // ==================================================
+
+        const connection =
+          await pool.getConnection();
+
+
+        try {
+
+          await connection.beginTransaction();
+
+
+          // ==================================================
+          // LOCK DEPOSIT
+          // ==================================================
+
+          const [lockedRows] =
+            await connection.query(
+              `
+              SELECT
+                id,
+                user_id,
+                status,
+                last_updated
+
+              FROM deposits
+
+              WHERE id = ?
+
+              FOR UPDATE
+              `,
+              [dep.id]
+            );
+
+
+          if (
+            !lockedRows.length ||
+            lockedRows[0].status !==
+              "Active"
+          ) {
+
+            await connection.rollback();
+
+            connection.release();
+
+            continue;
+
+          }
+
+
+          const lockedDeposit =
+            lockedRows[0];
+
+
+          if (
+            !lockedDeposit.last_updated
+          ) {
+
+            await connection.rollback();
+
+            connection.release();
+
+            continue;
+
+          }
+
+
+          const lockedLastDate =
+            new Date(
+              lockedDeposit.last_updated
+            )
+              .toISOString()
+              .slice(
+                0,
+                10
+              );
+
+
+          // Another cron execution may have already
+          // processed this deposit.
+          if (
+            lockedLastDate ===
+            currentDate
+          ) {
+
+            await connection.rollback();
+
+            connection.release();
+
+            continue;
+
+          }
+
+
+          // ==================================================
+          // ADD DAILY GAIN TO DEPOSIT
+          // ==================================================
+
+          await connection.query(
             `
             UPDATE deposits
 
@@ -2078,17 +2409,23 @@ cron.schedule(
               last_updated = ?
 
             WHERE id = ?
+
+            AND status = 'Active'
             `,
             [
-              dailyGainZAR,
-              gain,
+              dailyGain,
+              dailyGain,
               now,
               dep.id
             ]
           );
 
 
-          await pool.query(
+          // ==================================================
+          // ADD GAIN TO USER BALANCE
+          // ==================================================
+
+          await connection.query(
             `
             UPDATE users
 
@@ -2098,15 +2435,42 @@ cron.schedule(
             WHERE id = ?
             `,
             [
-              gain,
+              dailyGain,
               dep.user_id
             ]
           );
 
 
+          await connection.commit();
+
+
           console.log(
-            `✅ Added R${gain.toFixed(2)} gain to user ${dep.user_id}`
+            `💰 Added R${dailyGain.toFixed(2)} daily gain to user ${dep.user_id} for ${dep.plan_name}`
           );
+
+
+        } catch (transactionError) {
+
+          try {
+
+            await connection.rollback();
+
+          } catch (rollbackError) {
+
+            console.error(
+              "Daily gain rollback error:",
+              rollbackError
+            );
+
+          }
+
+
+          throw transactionError;
+
+
+        } finally {
+
+          connection.release();
 
         }
 
@@ -2114,7 +2478,7 @@ cron.schedule(
 
 
       console.log(
-        "✅ Daily gains update complete."
+        "✅ Daily gains check complete."
       );
 
 

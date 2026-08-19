@@ -1,138 +1,925 @@
 <header>
+
   <div class="logo-container">
-    <img src="/images/background.jpg" alt="Logo" style="height:50px; border-radius:8px;">
-    <h1>Stonebridge Capital</h1>
+
+    <img
+      src="/images/background.jpg"
+      alt="Logo"
+      style="height:50px; border-radius:8px;"
+    >
+
+    <h1>
+      Stonebridge Capital
+    </h1>
+
   </div>
+
+  <nav>
+    <a href="/logout">Logout</a>
+  </nav>
+
 </header>
 
+
 <div class="dashboard-card">
-  <h2>Dashboard</h2>
 
-  <div class="dashboard-grid">
-    <!-- User Info -->
-    <div class="dashboard-subcard user-info">
-      <h3>👤 Welcome, <%= user.username %></h3>
-      <table class="dashboard-table">
-        <tr><th>Email</th><td><%= user.email %></td></tr>
-        <tr><th>Wallet</th><td><%= user.wallet || "Not set" %></td></tr>
-        <tr><th>Balance</th><td>$<%= parseFloat(user.balance || 0).toFixed(2) %></td></tr>
-      </table>
-      <div class="actions">
-        <a href="/deposit" class="btn deposit-btn">💰 Deposit</a>
-        <a href="/withdraw" class="btn withdraw-btn">💸 Withdraw</a>
-      </div>
+  <h2>
+    Dashboard
+  </h2>
+
+
+  <!-- =========================
+       ACCOUNT
+  ========================= -->
+
+  <div class="dashboard-subcard user-info">
+
+    <h3>
+      👤 Welcome, <%= user.username %>
+    </h3>
+
+    <table class="dashboard-table">
+
+      <tr>
+        <th>Email</th>
+        <td>
+          <%= user.email %>
+        </td>
+      </tr>
+
+      <tr>
+        <th>Wallet</th>
+        <td>
+          <%= user.wallet || "Not set" %>
+        </td>
+      </tr>
+
+      <tr>
+        <th>Available Balance</th>
+        <td>
+          R<%= parseFloat(user.balance || 0).toFixed(2) %>
+        </td>
+      </tr>
+
+    </table>
+
+
+    <div class="actions">
+
+      <a
+        href="/deposit"
+        class="btn deposit-btn"
+      >
+        💰 Invest
+      </a>
+
+      <a
+        href="/withdraw"
+        class="btn withdraw-btn"
+      >
+        💸 Withdraw
+      </a>
+
     </div>
 
-    <!-- Deposits -->
-    <div class="dashboard-subcard deposits">
-      <h3>💹 Your Deposits & Gains</h3>
-      <% if (!deposits || deposits.length === 0) { %>
-        <p>No deposits yet.</p>
-      <% } else { %>
-        <div class="table-wrapper">
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th>Plan</th><th>Amount ($)</th><th>Daily Gain ($)</th>
-                <th>Weekly Gain ($)</th><th>Monthly Gain ($)</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% deposits.forEach(dep => { %>
-                <tr>
-                  <td><%= dep.plan_name %></td>
-                  <td>$<%= parseFloat(dep.amount).toFixed(2) %></td>
-                  <td>$<%= parseFloat(dep.daily_gain || 0).toFixed(2) %></td>
-                  <td>$<%= parseFloat(dep.weekly_gain || 0).toFixed(2) %></td>
-                  <td>$<%= parseFloat(dep.monthly_gain || 0).toFixed(2) %></td>
-                  <td>
-                    <% if(dep.status === "Active") { %>
-                      <span class="status approved">✅ Active</span>
-                    <% } else if(dep.status === "Pending") { %>
-                      <span class="status pending">⏳ Pending</span>
-                    <% } else { %>
-                      <span class="status rejected">❌ Rejected</span>
-                    <% } %>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </div>
-
-    <!-- Referral Link -->
-    <div class="dashboard-subcard referrals">
-      <h3>Your Referral Link</h3>
-      <input type="text" readonly value="<%= user.referral_link %>" style="width:100%;padding:8px;border-radius:6px;" />
-      <p>Share to earn referral bonuses across 3 levels!</p>
-    </div>
-
-    <!-- Section A Referrals -->
-    <div class="dashboard-subcard referrals section-a">
-      <h3>🅰️ Section A Referrals</h3>
-      <% if (!referralsA || referralsA.length === 0) { %>
-        <p>No referrals yet.</p>
-      <% } else { %>
-        <div class="table-wrapper">
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th>Name</th><th>Email</th><th>Level</th>
-                <th>Bonus (%)</th><th>Matched ($)</th><th>Bonus Earned ($)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% referralsA.forEach(ref => { %>
-                <tr>
-                  <td><%= ref.referred_name || 'N/A' %></td>
-                  <td><%= ref.referred_email || 'N/A' %></td>
-                  <td><%= ref.level || 0 %></td>
-                  <td><%= ref.bonus_percent || 0 %></td>
-                  <td>$<%= parseFloat(ref.matched_amount || 0).toFixed(2) %></td>
-                  <td>$<%= parseFloat(ref.bonus_earned || 0).toFixed(2) %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </div>
-
-    <!-- Section B Referrals -->
-    <div class="dashboard-subcard referrals section-b">
-      <h3>🅱️ Section B Referrals</h3>
-      <% if (!referralsB || referralsB.length === 0) { %>
-        <p>No referrals yet.</p>
-      <% } else { %>
-        <div class="table-wrapper">
-          <table class="dashboard-table">
-            <thead>
-              <tr>
-                <th>Name</th><th>Email</th><th>Level</th>
-                <th>Bonus (%)</th><th>Matched ($)</th><th>Bonus Earned ($)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% referralsB.forEach(ref => { %>
-                <tr>
-                  <td><%= ref.referred_name || 'N/A' %></td>
-                  <td><%= ref.referred_email || 'N/A' %></td>
-                  <td><%= ref.level || 0 %></td>
-                  <td><%= ref.bonus_percent || 0 %></td>
-                  <td>$<%= parseFloat(ref.matched_amount || 0).toFixed(2) %></td>
-                  <td>$<%= parseFloat(ref.bonus_earned || 0).toFixed(2) %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </div>
   </div>
+
+
+  <!-- =========================
+       INVESTMENT PLANS
+  ========================= -->
+
+  <div class="dashboard-subcard plans">
+
+    <h3>
+      📈 Investment Plans
+    </h3>
+
+    <p class="section-description">
+      Choose an investment plan that suits you.
+    </p>
+
+    <div class="plans-grid">
+
+      <%
+        const dashboardPlans = [
+          {
+            name: "Bronze",
+            minimum: 300,
+            daily: 12
+          },
+          {
+            name: "Silver",
+            minimum: 900,
+            daily: 20
+          },
+          {
+            name: "Gold",
+            minimum: 1500,
+            daily: 40
+          },
+          {
+            name: "Platinum",
+            minimum: 2500,
+            daily: 77
+          },
+          {
+            name: "Diamond",
+            minimum: 5000,
+            daily: 200
+          },
+          {
+            name: "Ruby",
+            minimum: 8000,
+            daily: 300
+          },
+          {
+            name: "Emerald",
+            minimum: 12000,
+            daily: 400
+          }
+        ];
+      %>
+
+
+      <% dashboardPlans.forEach(plan => { %>
+
+        <div class="plan-card">
+
+          <h4>
+            <%= plan.name %>
+          </h4>
+
+          <div class="plan-detail">
+
+            <span>
+              Minimum Investment
+            </span>
+
+            <strong>
+              R<%= plan.minimum.toFixed(2) %>
+            </strong>
+
+          </div>
+
+
+          <div class="plan-detail">
+
+            <span>
+              Daily Return
+            </span>
+
+            <strong>
+              R<%= plan.daily.toFixed(2) %>
+            </strong>
+
+          </div>
+
+
+          <a
+            href="/deposit"
+            class="plan-btn"
+          >
+            Invest
+          </a>
+
+        </div>
+
+      <% }) %>
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       MY INVESTMENTS
+  ========================= -->
+
+  <div class="dashboard-subcard deposits">
+
+    <h3>
+      💹 My Investments
+    </h3>
+
+
+    <% if (!deposits || deposits.length === 0) { %>
+
+      <p>
+        You do not have any investments yet.
+      </p>
+
+    <% } else { %>
+
+      <div class="table-wrapper">
+
+        <table class="dashboard-table">
+
+          <thead>
+
+            <tr>
+
+              <th>Plan</th>
+
+              <th>Investment</th>
+
+              <th>Daily Return</th>
+
+              <th>Total Earned</th>
+
+              <th>Status</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody>
+
+            <% deposits.forEach(dep => { %>
+
+              <tr>
+
+                <td>
+                  <%= dep.plan_name || "N/A" %>
+                </td>
+
+                <td>
+                  R<%= parseFloat(dep.amount || 0).toFixed(2) %>
+                </td>
+
+                <td>
+                  R<%= parseFloat(dep.daily_gain || 0).toFixed(2) %>
+                </td>
+
+                <td>
+                  R<%= parseFloat(dep.total_earned || 0).toFixed(2) %>
+                </td>
+
+                <td>
+
+                  <% if (dep.status === "Active") { %>
+
+                    <span class="status active">
+                      ✅ Active
+                    </span>
+
+                  <% } else if (dep.status === "Pending") { %>
+
+                    <span class="status pending">
+                      ⏳ Pending
+                    </span>
+
+                  <% } else { %>
+
+                    <span class="status rejected">
+                      ❌ <%= dep.status %>
+                    </span>
+
+                  <% } %>
+
+                </td>
+
+              </tr>
+
+            <% }) %>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    <% } %>
+
+  </div>
+
+
+  <!-- =========================
+       REFERRAL LINK
+  ========================= -->
+
+  <div class="dashboard-subcard referrals">
+
+    <h3>
+      🔗 Your Referral Link
+    </h3>
+
+    <input
+      type="text"
+      readonly
+      value="<%= user.referral_link %>"
+      class="referral-input"
+    >
+
+    <p>
+      Share your referral link with others.
+    </p>
+
+  </div>
+
+
+  <!-- =========================
+       REFERRAL SUMMARY
+  ========================= -->
+
+  <div class="dashboard-subcard referral-summary">
+
+    <h3>
+      👥 My Referrals
+    </h3>
+
+    <div class="referral-grid">
+
+
+      <!-- LEVEL 1 -->
+
+      <div class="referral-card">
+
+        <div class="referral-icon">
+          1
+        </div>
+
+        <h4>
+          Level 1
+        </h4>
+
+        <p>
+          <%= (referralsA || []).filter(r => Number(r.level) === 1).length %>
+        </p>
+
+        <span>
+          Referrals
+        </span>
+
+      </div>
+
+
+      <!-- LEVEL 2 -->
+
+      <div class="referral-card">
+
+        <div class="referral-icon">
+          2
+        </div>
+
+        <h4>
+          Level 2
+        </h4>
+
+        <p>
+          <%= (referralsA || []).filter(r => Number(r.level) === 2).length +
+              (referralsB || []).filter(r => Number(r.level) === 2).length %>
+        </p>
+
+        <span>
+          Referrals
+        </span>
+
+      </div>
+
+
+      <!-- LEVEL 3 -->
+
+      <div class="referral-card">
+
+        <div class="referral-icon">
+          3
+        </div>
+
+        <h4>
+          Level 3
+        </h4>
+
+        <p>
+          <%= (referralsA || []).filter(r => Number(r.level) === 3).length +
+              (referralsB || []).filter(r => Number(r.level) === 3).length %>
+        </p>
+
+        <span>
+          Referrals
+        </span>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
 </div>
 
+
 <style>
-/* same CSS as before, no changes needed */
+
+/* =========================
+   HEADER
+========================= */
+
+header {
+
+  width: 100%;
+
+  padding: 18px 35px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 12px rgba(0,0,0,0.08);
+
+}
+
+.logo-container {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+}
+
+.logo-container h1 {
+
+  font-size: 2rem;
+
+  color: #1a73e8;
+
+  font-weight: 700;
+
+}
+
+nav a {
+
+  color: #1a73e8;
+
+  text-decoration: none;
+
+  font-weight: 600;
+
+}
+
+nav a:hover {
+
+  color: #1258b0;
+
+}
+
+
+/* =========================
+   DASHBOARD
+========================= */
+
+.dashboard-card {
+
+  width: 95%;
+
+  max-width: 1500px;
+
+  margin: 30px auto;
+
+  padding: 30px;
+
+  background: #fff;
+
+  border-radius: 14px;
+
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.08);
+
+  font-family: Arial, sans-serif;
+
+}
+
+.dashboard-card h2 {
+
+  color: #2c3e50;
+
+  text-align: center;
+
+  font-size: 2.6rem;
+
+  margin-bottom: 35px;
+
+}
+
+
+/* =========================
+   SUBCARDS
+========================= */
+
+.dashboard-subcard {
+
+  background: #f9f9f9;
+
+  border-radius: 14px;
+
+  padding: 20px;
+
+  margin-bottom: 30px;
+
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.06);
+
+}
+
+.dashboard-subcard h3 {
+
+  color: #fff;
+
+  font-size: 1.4rem;
+
+  margin-bottom: 15px;
+
+  padding: 10px 15px;
+
+  border-radius: 8px;
+
+  background:
+    linear-gradient(
+      120deg,
+      #1a73e8,
+      #4facfe
+    );
+
+}
+
+
+/* =========================
+   TABLES
+========================= */
+
+.table-wrapper {
+
+  overflow-x: auto;
+
+}
+
+.dashboard-table {
+
+  width: 100%;
+
+  border-collapse: collapse;
+
+  margin-top: 10px;
+
+}
+
+.dashboard-table th,
+.dashboard-table td {
+
+  padding: 12px;
+
+  text-align: center;
+
+  border: 1px solid #ddd;
+
+}
+
+.dashboard-table th {
+
+  background-color: #1a73e8;
+
+  color: #fff;
+
+  text-transform: uppercase;
+
+}
+
+.dashboard-table tr:nth-child(even) {
+
+  background-color: #f9f9f9;
+
+}
+
+.dashboard-table tr:hover {
+
+  background-color: #eef4ff;
+
+}
+
+
+/* =========================
+   ACTION BUTTONS
+========================= */
+
+.actions {
+
+  display: flex;
+
+  gap: 15px;
+
+  margin-top: 20px;
+
+}
+
+.btn {
+
+  display: inline-block;
+
+  padding: 12px 25px;
+
+  border-radius: 8px;
+
+  text-decoration: none;
+
+  color: #fff;
+
+  font-weight: 600;
+
+}
+
+.deposit-btn {
+
+  background: #27ae60;
+
+}
+
+.withdraw-btn {
+
+  background: #e74c3c;
+
+}
+
+
+/* =========================
+   INVESTMENT PLANS
+========================= */
+
+.section-description {
+
+  color: #666;
+
+  margin-bottom: 20px;
+
+}
+
+.plans-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(220px, 1fr)
+    );
+
+  gap: 20px;
+
+}
+
+.plan-card {
+
+  background: #fff;
+
+  border-radius: 12px;
+
+  padding: 20px;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.08);
+
+  text-align: center;
+
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+
+}
+
+.plan-card:hover {
+
+  transform: translateY(-4px);
+
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.12);
+
+}
+
+.plan-card h4 {
+
+  font-size: 1.4rem;
+
+  color: #1a73e8;
+
+  margin-bottom: 20px;
+
+}
+
+.plan-detail {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  padding: 10px 0;
+
+  border-bottom: 1px solid #eee;
+
+}
+
+.plan-detail span {
+
+  color: #666;
+
+  font-size: 0.9rem;
+
+}
+
+.plan-detail strong {
+
+  color: #2c3e50;
+
+}
+
+.plan-btn {
+
+  display: block;
+
+  margin-top: 18px;
+
+  padding: 10px;
+
+  background: #1a73e8;
+
+  color: #fff;
+
+  text-decoration: none;
+
+  border-radius: 8px;
+
+  font-weight: 600;
+
+}
+
+.plan-btn:hover {
+
+  background: #1258b0;
+
+}
+
+
+/* =========================
+   REFERRAL LINK
+========================= */
+
+.referral-input {
+
+  width: 100%;
+
+  padding: 12px;
+
+  border:
+    1px solid #ddd;
+
+  border-radius: 8px;
+
+  box-sizing: border-box;
+
+  background: #fff;
+
+}
+
+
+/* =========================
+   REFERRALS
+========================= */
+
+.referral-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      1fr
+    );
+
+  gap: 20px;
+
+}
+
+.referral-card {
+
+  background: #fff;
+
+  padding: 25px;
+
+  border-radius: 12px;
+
+  text-align: center;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.07);
+
+}
+
+.referral-icon {
+
+  width: 45px;
+
+  height: 45px;
+
+  line-height: 45px;
+
+  margin: 0 auto 10px;
+
+  border-radius: 50%;
+
+  background: #1a73e8;
+
+  color: #fff;
+
+  font-weight: bold;
+
+}
+
+.referral-card h4 {
+
+  margin: 8px 0;
+
+  color: #2c3e50;
+
+}
+
+.referral-card p {
+
+  font-size: 2rem;
+
+  font-weight: bold;
+
+  color: #1a73e8;
+
+  margin: 10px 0 2px;
+
+}
+
+.referral-card span {
+
+  color: #777;
+
+}
+
+
+/* =========================
+   STATUS
+========================= */
+
+.status {
+
+  font-weight: 600;
+
+}
+
+.status.active {
+
+  color: #27ae60;
+
+}
+
+.status.pending {
+
+  color: #f39c12;
+
+}
+
+.status.rejected {
+
+  color: #e74c3c;
+
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 800px) {
+
+  .referral-grid {
+
+    grid-template-columns: 1fr;
+
+  }
+
+  .actions {
+
+    flex-direction: column;
+
+  }
+
+  .btn {
+
+    text-align: center;
+
+  }
+
+}
+
 </style>

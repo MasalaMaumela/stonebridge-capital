@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Deposit Funds</title>
 
 <style>
-/* === RESET === */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -22,10 +23,9 @@ body {
   color: #333;
 }
 
-/* === HEADER / NAVBAR === */
 header {
   width: 100%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.1);
   box-shadow: 0 3px 10px rgba(0,0,0,0.1);
   display: flex;
   justify-content: space-between;
@@ -41,7 +41,6 @@ header .logo {
   font-size: 1.4rem;
   font-weight: bold;
   color: #fff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 nav a {
@@ -49,14 +48,12 @@ nav a {
   color: #fff;
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.25s;
 }
 
 nav a:hover {
   color: #ffd700;
 }
 
-/* === MAIN CONTENT === */
 main {
   flex: 1;
   display: flex;
@@ -69,16 +66,16 @@ main {
   background: #fff;
   padding: 30px 25px;
   border-radius: 18px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   width: 100%;
   max-width: 480px;
-  text-align: center;
 }
 
 .card h2 {
   color: #1a73e8;
   font-size: 1.8rem;
   margin-bottom: 15px;
+  text-align: center;
 }
 
 .card p {
@@ -86,21 +83,25 @@ main {
   line-height: 1.5;
   margin-bottom: 10px;
   color: #444;
-  text-align: left;
 }
 
-/* === FORM === */
+.error-box {
+  background: #fdecea;
+  color: #c0392b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
 form {
   margin-top: 20px;
-  text-align: left;
 }
 
 form label {
   display: block;
   font-weight: 600;
-  color: #333;
   margin-top: 15px;
-  font-size: 0.95rem;
 }
 
 form select,
@@ -111,17 +112,14 @@ form input {
   border-radius: 10px;
   border: 1px solid #ccc;
   font-size: 1rem;
-  transition: border-color 0.25s, box-shadow 0.25s;
 }
 
 form select:focus,
 form input:focus {
   border-color: #1a73e8;
-  box-shadow: 0 0 6px rgba(26,115,232,0.3);
   outline: none;
 }
 
-/* === BUTTON === */
 button {
   width: 100%;
   background: linear-gradient(to right, #1a73e8, #4facfe);
@@ -133,15 +131,12 @@ button {
   cursor: pointer;
   margin-top: 25px;
   font-size: 1rem;
-  transition: all 0.25s ease;
 }
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(26,115,232,0.4);
 }
 
-/* === PROFIT BOX === */
 .profit-box {
   display: none;
   background: #eafaf1;
@@ -151,11 +146,8 @@ button:hover {
   padding: 12px;
   border-radius: 10px;
   margin-top: 15px;
-  font-size: 0.95rem;
-  transition: all 0.3s ease;
 }
 
-/* === FOOTER === */
 footer {
   width: 100%;
   text-align: center;
@@ -163,160 +155,278 @@ footer {
   color: #fff;
   font-size: 0.9rem;
   background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(5px);
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
 }
 
-/* === MOBILE === */
 @media (max-width: 600px) {
+
   header {
     flex-direction: column;
     text-align: center;
   }
+
   nav {
     margin-top: 8px;
   }
+
   nav a {
     margin: 0 10px;
     font-size: 0.95rem;
   }
+
   main {
     padding: 25px 10px;
   }
-  .card {
-    padding: 25px 20px;
-  }
+
 }
+
 </style>
 </head>
 
 <body>
-  <header>
-    <div class="logo">Stonebridge Capital</div>
-    <nav>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/deposit">Deposit</a>
-      <a href="/withdraw">Withdraw</a>
-      <a href="/logout">Logout</a>
-    </nav>
-  </header>
 
-  <main>
-    <div class="card">
-      <h2>Deposit Funds</h2>
+<header>
 
-      <p>Please send your TRC20 deposit to the following address:</p>
-      <p><strong>TH6KhjSWDmP5hgHFrVb59UcAD5qgB6cg6S</strong></p>
+  <div class="logo">
+    Stonebridge Capital
+  </div>
 
-      <p>
-        After sending, copy the <strong>Transaction ID (TXID)</strong> from
-        your wallet or exchange and paste it below.
-      </p>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/deposit">Deposit</a>
+    <a href="/withdraw">Withdraw</a>
+    <a href="/logout">Logout</a>
+  </nav>
 
-      <form action="/deposit" method="POST">
-        <!-- PLAN SELECTION -->
-        <label for="plan">Select Plan</label>
-        <select name="plan_id" id="plan" required>
-          <option value="">-- Choose a plan --</option>
-          <% plans.forEach(plan => { %>
-            <option
-              value="<%= plan.id %>"
-              data-daily="<%= plan.daily_return %>"
-              data-weekly="<%= plan.weekly_return %>"
-              data-monthly="<%= plan.monthly_return %>"
-              data-min="<%= plan.min_amount_usd %>">
-              <%= plan.name %> — Min $<%= plan.min_amount_usd %>
-              (Daily $<%= plan.daily_return %>, Weekly $<%= plan.weekly_return %>, Monthly $<%= plan.monthly_return %>)
-            </option>
-          <% }) %>
-        </select>
+</header>
 
-        <!-- AMOUNT -->
-        <label for="amount">Amount</label>
-        <input
-          type="number"
-          name="amount"
-          id="amount"
-          required
-          step="0.01"
-          placeholder="Enter amount"
-        />
+<main>
 
-        <!-- LIVE PROFIT DISPLAY -->
-        <div id="profit-display" class="profit-box"></div>
+  <div class="card">
 
-        <!-- WALLET -->
-        <label for="wallet">Your Wallet Address</label>
-        <input
-          type="text"
-          name="wallet"
-          id="wallet"
-          required
-          placeholder="Enter your wallet address"
-        />
+    <h2>Deposit Funds</h2>
 
-        <!-- TXID -->
-        <label for="txid">Transaction ID (TXID)</label>
-        <input
-          type="text"
-          name="txid"
-          id="txid"
-          required
-          placeholder="Paste your transaction ID here"
-        />
+    <% if (typeof error !== "undefined" && error) { %>
+      <div class="error-box">
+        <%= error %>
+      </div>
+    <% } %>
 
-        <button type="submit">Submit Deposit</button>
-      </form>
-    </div>
-  </main>
+    <p>
+      Please send your TRC20 deposit to the following address:
+    </p>
 
-  <footer>
-    © 2025 Stonebridge Capital. All rights reserved.
-  </footer>
+    <p>
+      <strong>
+        TH6KhjSWDmP5hgHFrVb59UcAD5qgB6cg6S
+      </strong>
+    </p>
 
-  <script>
-    const planSelect = document.getElementById("plan");
-    const amountInput = document.getElementById("amount");
-    const profitDisplay = document.getElementById("profit-display");
+    <p>
+      After sending, copy the
+      <strong>Transaction ID (TXID)</strong>
+      from your wallet or exchange and paste it below.
+    </p>
 
-    function updateProfit() {
-      const selected = planSelect.options[planSelect.selectedIndex];
-      if (!selected || !amountInput.value) {
-        profitDisplay.style.display = "none";
-        return;
-      }
+    <form action="/deposit" method="POST">
 
-      const min = parseFloat(selected.dataset.min || 0);
-      const daily = parseFloat(selected.dataset.daily || 0);
-      const weekly = parseFloat(selected.dataset.weekly || 0);
-      const monthly = parseFloat(selected.dataset.monthly || 0);
-      const amount = parseFloat(amountInput.value);
+      <!-- PLAN -->
 
-      if (amount < min) {
-        profitDisplay.innerHTML = `❌ Minimum deposit for ${selected.text} is $${min}`;
-        profitDisplay.style.display = "block";
-        profitDisplay.style.color = "#e74c3c";
-        return;
-      }
+      <label for="plan">
+        Select Plan
+      </label>
 
-      profitDisplay.style.display = "block";
-      profitDisplay.style.color = "#27ae60";
-      profitDisplay.innerHTML = `
-        ✅ Estimated Returns:<br>
-        • Daily: $${daily.toFixed(2)}<br>
-        }
-      `;
+      <select
+        name="plan_id"
+        id="plan"
+        required
+      >
+
+        <option value="">
+          -- Choose a plan --
+        </option>
+
+        <% plans.forEach(plan => { %>
+
+          <option
+            value="<%= plan.id %>"
+            data-daily="<%= plan.daily_return %>"
+            data-min="<%= plan.min_amount_zar %>"
+          >
+
+            <%= plan.name %>
+            — Minimum R<%= Number(plan.min_amount_zar).toFixed(2) %>
+            — Daily R<%= Number(plan.daily_return).toFixed(2) %>
+
+          </option>
+
+        <% }) %>
+
+      </select>
+
+      <!-- AMOUNT -->
+
+      <label for="amount">
+        Amount (ZAR)
+      </label>
+
+      <input
+        type="number"
+        name="amount"
+        id="amount"
+        required
+        step="0.01"
+        min="0"
+        placeholder="Enter amount in rand"
+      >
+
+      <!-- PROFIT -->
+
+      <div
+        id="profit-display"
+        class="profit-box"
+      ></div>
+
+      <!-- WALLET -->
+
+      <label for="wallet">
+        Your Wallet Address
+      </label>
+
+      <input
+        type="text"
+        name="wallet"
+        id="wallet"
+        required
+        placeholder="Enter your wallet address"
+      >
+
+      <!-- TXID -->
+
+      <label for="txid">
+        Transaction ID (TXID)
+      </label>
+
+      <input
+        type="text"
+        name="txid"
+        id="txid"
+        required
+        placeholder="Paste your transaction ID here"
+      >
+
+      <button type="submit">
+        Submit Deposit
+      </button>
+
+    </form>
+
+  </div>
+
+</main>
+
+<footer>
+  © 2026 Stonebridge Capital. All rights reserved.
+</footer>
+
+<script>
+
+const planSelect =
+  document.getElementById("plan");
+
+const amountInput =
+  document.getElementById("amount");
+
+const profitDisplay =
+  document.getElementById("profit-display");
+
+function updateProfit() {
+
+  const selected =
+    planSelect.options[
+      planSelect.selectedIndex
+    ];
+
+  if (
+    !selected ||
+    !selected.value ||
+    !amountInput.value
+  ) {
+
+    profitDisplay.style.display =
+      "none";
+
+    return;
+  }
+
+  const min =
+    parseFloat(
+      selected.dataset.min || 0
+    );
+
+  const daily =
+    parseFloat(
+      selected.dataset.daily || 0
+    );
+
+  const amount =
+    parseFloat(
+      amountInput.value
+    );
+
+  if (amount < min) {
+
+    profitDisplay.innerHTML =
+      `❌ Minimum deposit is R${min.toFixed(2)}`;
+
+    profitDisplay.style.display =
+      "block";
+
+    profitDisplay.style.color =
+      "#e74c3c";
+
+    return;
+  }
+
+  profitDisplay.style.display =
+    "block";
+
+  profitDisplay.style.color =
+    "#27ae60";
+
+  profitDisplay.innerHTML = `
+    ✅ Estimated Daily Return:<br>
+    R${daily.toFixed(2)}
+  `;
+}
+
+planSelect.addEventListener(
+  "change",
+  () => {
+
+    const selected =
+      planSelect.options[
+        planSelect.selectedIndex
+      ];
+
+    if (
+      selected &&
+      selected.dataset.min
+    ) {
+
+      amountInput.value =
+        selected.dataset.min;
     }
 
-    planSelect.addEventListener("change", () => {
-      const selected = planSelect.options[planSelect.selectedIndex];
-      if (selected && selected.dataset.min) {
-        amountInput.value = selected.dataset.min;
-      }
-      updateProfit();
-    });
+    updateProfit();
+  }
+);
 
-    amountInput.addEventListener("input", updateProfit);
-  </script>
+amountInput.addEventListener(
+  "input",
+  updateProfit
+);
+
+</script>
+
 </body>
 </html>

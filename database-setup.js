@@ -5,13 +5,30 @@ const pool = require("./database");
 
 async function setupDatabase() {
   try {
-    console.log("🔄 Creating Stonebridge database tables...");
+    console.log("🔄 Recreating Stonebridge database tables...");
 
-    // =========================
+    // =====================================================
+    // REMOVE OLD TABLES
+    // =====================================================
+
+    await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+
+    await pool.query("DROP TABLE IF EXISTS referrals");
+    await pool.query("DROP TABLE IF EXISTS withdrawals");
+    await pool.query("DROP TABLE IF EXISTS deposits");
+    await pool.query("DROP TABLE IF EXISTS plans");
+    await pool.query("DROP TABLE IF EXISTS users");
+
+    await pool.query("SET FOREIGN_KEY_CHECKS = 1");
+
+    console.log("🗑️ Old tables removed");
+
+    // =====================================================
     // USERS
-    // =========================
+    // =====================================================
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
@@ -23,27 +40,29 @@ async function setupDatabase() {
       )
     `);
 
-    console.log("✅ users table ready");
+    console.log("✅ users table created");
 
-    // =========================
+    // =====================================================
     // PLANS
-    // =========================
+    // =====================================================
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS plans (
+      CREATE TABLE plans (
         id INT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
-        min_amount_usd DECIMAL(18,2) NOT NULL,
+        min_amount_zar DECIMAL(18,2) NOT NULL,
         daily_return DECIMAL(18,2) NOT NULL
       )
     `);
 
-    console.log("✅ plans table ready");
+    console.log("✅ plans table created");
 
-    // =========================
+    // =====================================================
     // DEPOSITS
-    // =========================
+    // =====================================================
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS deposits (
+      CREATE TABLE deposits (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         plan_id INT NOT NULL,
@@ -55,74 +74,100 @@ async function setupDatabase() {
         total_earned DECIMAL(18,2) DEFAULT 0.00,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_updated DATETIME NULL,
+
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (plan_id) REFERENCES plans(id)
       )
     `);
 
-    console.log("✅ deposits table ready");
+    console.log("✅ deposits table created");
 
-    // =========================
+    // =====================================================
     // REFERRALS
-    // =========================
+    // =====================================================
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS referrals (
+      CREATE TABLE referrals (
         id INT AUTO_INCREMENT PRIMARY KEY,
         referred_user_id INT NOT NULL,
         referrer_id INT NOT NULL,
         side VARCHAR(10) NOT NULL,
         level INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
         FOREIGN KEY (referred_user_id) REFERENCES users(id),
         FOREIGN KEY (referrer_id) REFERENCES users(id)
       )
     `);
 
-    console.log("✅ referrals table ready");
+    console.log("✅ referrals table created");
 
-    // =========================
+    // =====================================================
     // WITHDRAWALS
-    // =========================
+    // =====================================================
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS withdrawals (
+      CREATE TABLE withdrawals (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         amount DECIMAL(18,2) NOT NULL,
         wallet VARCHAR(255) NOT NULL,
         status VARCHAR(50) DEFAULT 'Pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `);
 
-    console.log("✅ withdrawals table ready");
+    console.log("✅ withdrawals table created");
 
-    // =========================
-    // PLANS DATA
-    // =========================
+    // =====================================================
+    // INSERT 7 ZAR PLANS
+    // =====================================================
+
     await pool.query(`
       INSERT INTO plans
-        (id, name, min_amount_usd, daily_return)
+        (id, name, min_amount_zar, daily_return)
       VALUES
-        (1, 'Bronze', 15.00, 1.30),
-        (7, 'Emerald', 500.00, 22.42),
-        ON DUPLICATE KEY UPDATE
-        name = VALUES(name),
-        min_amount_usd = VALUES(min_amount_usd),
-        daily_return = VALUES(daily_return)
+        (1, 'Bronze', 300.00, 12.00),
+        (2, 'Silver', 900.00, 20.00),
+        (3, 'Gold', 1500.00, 40.00),
+        (4, 'Platinum', 2500.00, 77.00),
+        (5, 'Diamond', 5000.00, 200.00),
+        (6, 'Ruby', 8000.00, 300.00),
+        (7, 'Emerald', 12000.00, 400.00)
     `);
 
-    console.log("✅ plans data inserted/updated");
+    console.log("✅ 7 ZAR plans inserted");
 
-    // =========================
+    // =====================================================
     // SHOW TABLES
-    // =========================
+    // =====================================================
+
     const [tables] = await pool.query("SHOW TABLES");
 
-    console.log("\n📋 Tables currently in the database:");
+    console.log("\n📋 Tables currently in database:");
 
     for (const table of tables) {
       console.log(" -", Object.values(table)[0]);
+    }
+
+    // =====================================================
+    // SHOW PLANS
+    // =====================================================
+
+    const [plans] = await pool.query(`
+      SELECT id, name, min_amount_zar, daily_return
+      FROM plans
+      ORDER BY id
+    `);
+
+    console.log("\n💰 Current ZAR plans:");
+
+    for (const plan of plans) {
+      console.log(
+        ` - ${plan.id}. ${plan.name}: Minimum R${plan.min_amount_zar}, Daily R${plan.daily_return}`
+      );
     }
 
     console.log("\n🎉 Stonebridge database setup complete!");
